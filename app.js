@@ -40,7 +40,13 @@ async function react(kind, id, type) {
   if (cur === type) { patch[f(type)] = increment(-1); setVote(key, null); }
   else { patch[f(type)] = increment(1); if (cur && kind !== "i") patch[f(cur)] = increment(-1); setVote(key, type); }
   try { await updateDoc(doc(fs, col, id), patch); }
-  catch (err) { console.error(err); setVote(key, cur || null); toast("Could not save that. Try again."); }
+  catch (err) {
+    console.error("Could not save reaction:", err);
+    setVote(key, cur || null);
+    toast(err.code === "permission-denied"
+      ? "Could not save your reaction. Firestore rules may need to be published."
+      : "Could not save that. Check your connection and try again.");
+  }
 }
 function preview(t) {   // first 1-2 sentences, max ~140 characters
   const full = String(t).trim();
