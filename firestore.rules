@@ -1,12 +1,31 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // CHANGE THIS to the admin email you create in Firebase Authentication
     function isAdmin() {
       return request.auth != null && request.auth.token.email == 'rubiovalandrew@gmail.com';
     }
-    match /news/{id}   { allow read: if true; allow write: if isAdmin(); }
-    match /images/{id} { allow read: if true; allow write: if isAdmin(); }
+    // Students may only change the like counters, and only by 1 at a time.
+    function delta(f) {
+      return request.resource.data.get(f, 0) - resource.data.get(f, 0);
+    }
+    function onlyReacting(fields) {
+      return request.resource.data.diff(resource.data).affectedKeys().hasOnly(fields)
+        && request.resource.data.get('likes', 0) is int
+        && request.resource.data.get('dislikes', 0) is int
+        && request.resource.data.get('likes', 0) >= 0
+        && request.resource.data.get('dislikes', 0) >= 0
+        && delta('likes') >= -1 && delta('likes') <= 1
+        && delta('dislikes') >= -1 && delta('dislikes') <= 1;
+    }
+
+    match /news/{id} { allow read: if true; allow write: if isAdmin(); }
+
+    match /images/{id} {
+      allow read: if true;
+      allow create, delete: if isAdmin();
+      allow update: if isAdmin() || onlyReacting(['likes']);
+    }
+
     match /messages/{id} {
       allow read: if resource.data.status == 'approved' || isAdmin();
       allow create: if request.resource.data.keys().hasOnly(['text','status','date'])
@@ -14,7 +33,9 @@ service cloud.firestore {
                     && request.resource.data.text is string
                     && request.resource.data.text.size() >= 5
                     && request.resource.data.text.size() <= 500;
-      allow update, delete: if isAdmin();
+      allow update: if isAdmin()
+                    || (resource.data.status == 'approved' && onlyReacting(['likes','dislikes']));
+      allow delete: if isAdmin();
     }
   }
 }

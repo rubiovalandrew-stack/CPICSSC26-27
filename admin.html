@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>CPIC Admin</title>
+<title>SSC Admin</title>
 <meta name="robots" content="noindex">
 <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@700;800&family=Source+Sans+3:wght@400;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="style.css">
@@ -25,7 +25,7 @@
 
 <div id="dash" class="hidden">
   <header class="top"><div class="wrap">
-    <span class="brand">CPIC<span>.</span> Admin</span>
+    <span class="brand">SSC<span>.</span> Admin</span>
     <nav><a href="index.html" target="_blank">View student page</a><a href="#" id="logout">Log out</a></nav>
   </div></header>
 
@@ -52,6 +52,8 @@
           <input type="text" id="ntitle" required maxlength="120">
           <label for="nbody">Details</label>
           <textarea id="nbody" required></textarea>
+          <label for="nimg">Image (optional)</label>
+          <input type="file" id="nimg" accept="image/*" style="margin-bottom:14px">
           <button class="btn" type="submit">Post news</button>
         </form>
         <div><h2>Posted news</h2><div id="newsList"></div></div>
@@ -61,7 +63,8 @@
     <div class="tabpane hidden" id="tImg">
       <div class="admin-grid two">
         <form class="panel" id="imgForm">
-          <h2>Post an image</h2>
+          <h2>Post a photo</h2>
+          <p class="meta">Photos are removed automatically 24 hours after posting.</p>
           <label for="file">Image file</label>
           <input type="file" id="file" accept="image/*" required>
           <label for="caption">Caption (optional)</label>
