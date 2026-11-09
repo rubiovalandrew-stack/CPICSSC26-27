@@ -121,7 +121,7 @@ footer{background:#12264a;color:#b6c5e3;padding:26px 0;text-align:center;font-si
 .strip{position:relative}
 .gallery{display:flex;columns:auto;gap:10px;overflow-x:auto;scroll-snap-type:x mandatory;scrollbar-width:none;-webkit-overflow-scrolling:touch;padding-bottom:2px}
 .gallery::-webkit-scrollbar{display:none}
-.gallery figure{flex:0 0 calc((100% - 30px) / 4);scroll-snap-align:start;margin:0;break-inside:auto;min-width:0}
+.gallery figure{flex:0 0 calc(31.25% - 9.375px);scroll-snap-align:start;margin:0;break-inside:auto;min-width:0}
 .gallery img{width:100%;height:auto;aspect-ratio:1/1;object-fit:cover;cursor:zoom-in;background:#0b1424}
 .gallery figcaption{padding:5px 6px;font-size:.78rem}
 .gallery .empty{flex:1}
