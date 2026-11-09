@@ -1,7 +1,7 @@
 /* SSC School Site – Firebase version (Firestore + Authentication) */
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
 import { getFirestore, collection, addDoc, deleteDoc, updateDoc, doc, query, where, orderBy, onSnapshot, Timestamp, increment } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
-import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged, EmailAuthProvider, reauthenticateWithCredential, updateEmail, updatePassword } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 import { firebaseConfig } from "./firebase-config.js";
 
 const app = initializeApp(firebaseConfig);
@@ -9,8 +9,9 @@ const fs = getFirestore(app);
 const auth = getAuth(app);
 
 const DAY = 864e5;        // photos stay up for 24 hours
-const LOCK_SECONDS = 30;  // new news stays locked this long
+const LOCK_SECONDS = 15;  // new news stays locked this long
 const NEW_DAYS = 7;       // only news newer than this triggers the lock
+const MESSAGE_LIMIT = 1500;
 
 const page = document.body.dataset.page;
 const $ = (s, r = document) => r.querySelector(s);
@@ -34,10 +35,10 @@ const ICON = {
 };
 const rxBtn = (kind, id, icon, count, on) => `<button class="rx${on ? " on" : ""}" type="button" data-rx="${icon === "dislike" ? "dislike" : "like"}" data-id="${id}" aria-pressed="${on}" aria-label="${icon === "dislike" ? "Dislike" : "Like"}">${ICON[icon]}<span>${count || 0}</span></button>`;
 async function react(kind, id, type) {
-  const col = kind === "m" ? "messages" : "images", key = kind + ":" + id, cur = votes()[key], patch = {};
+  const col = kind === "m" ? "messages" : kind === "n" ? "news" : "images", key = kind + ":" + id, cur = votes()[key], patch = {};
   const f = t => (t === "like" ? "likes" : "dislikes");
   if (cur === type) { patch[f(type)] = increment(-1); setVote(key, null); }
-  else { patch[f(type)] = increment(1); if (cur && kind === "m") patch[f(cur)] = increment(-1); setVote(key, type); }
+  else { patch[f(type)] = increment(1); if (cur && kind !== "i") patch[f(cur)] = increment(-1); setVote(key, type); }
   try { await updateDoc(doc(fs, col, id), patch); }
   catch (err) { console.error(err); setVote(key, cur || null); toast("Could not save that. Try again."); }
 }
@@ -48,6 +49,15 @@ function preview(t) {   // first 1-2 sentences, max ~140 characters
   const cut = p.length < full.length;
   return { short: cut ? p + "…" : p, cut };
 }
+function previewHTML(text, key, expanded) {
+  const p = preview(text), open = expanded.has(key);
+  return `<span class="short"${open ? " hidden" : ""}>${esc(p.short)}</span>${p.cut ? `<span class="full"${open ? "" : " hidden"}>${esc(text)}</span><button class="more" type="button" data-more="${esc(key)}" aria-expanded="${open}">${open ? "Show less" : "Show more"}</button>` : ""}`;
+}
+const newsImages = n => Array.isArray(n.images) ? n.images : n.image ? [n.image] : [];
+const newsImageHTML = (n, className = "", loading = "lazy") => {
+  const images = newsImages(n);
+  return images.length ? `<div class="news-image-grid">${images.map((src, index) => `<img${className ? ` class="${className}"` : ""} src="${src}" alt="${esc(n.title || "News image")} (${index + 1} of ${images.length})" loading="${loading}">`).join("")}</div>` : "";
+};
 function toast(msg) {
   const t = document.createElement("div");
   t.className = "toast"; t.setAttribute("role", "status"); t.textContent = msg;
@@ -108,63 +118,145 @@ const markRead = id => { const s = readSet(); s.add(id); try { localStorage.setI
 function checkGate() {
   if (gateOpen) return;
   const read = readSet(), cutoff = Date.now() - NEW_DAYS * DAY;
-  const n = state.news.find(x => !read.has(x.id) && x.date > cutoff);
-  if (n) openGate(n);
+  const unread = state.news.filter(n => !read.has(n.id) && n.date > cutoff);
+  if (unread.length) openGate(unread);
 }
-function openGate(n) {
+function openGate(announcements) {
   gateOpen = true; document.body.style.overflow = "hidden";
+  const duration = LOCK_SECONDS * announcements.length;
   const g = document.createElement("div"); g.className = "gate";
   g.innerHTML = `<div class="gate-card" role="dialog" aria-modal="true" aria-labelledby="gt" tabindex="-1">
-    <div class="gate-head"><span class="${tagClass(n.source)}">${esc(n.source)}</span><span class="meta">New announcement · ${fmt(n.date)}</span></div>
-    <div class="gate-body"><h2 id="gt">${esc(n.title)}</h2>${n.image ? `<img src="${n.image}" alt="">` : ""}<p>${esc(n.body)}</p></div>
+    <div class="gate-head"><h2 id="gt">New announcements</h2><span class="meta">${announcements.length} announcement${announcements.length === 1 ? "" : "s"} · ${duration} second${duration === 1 ? "" : "s"} reading time</span></div>
+    <div class="gate-body">${announcements.map(n => `<article class="gate-news">
+      <div class="meta"><span class="${tagClass(n.source)}">${esc(n.source)}</span>${fmt(n.date)}</div>
+      <h3>${esc(n.title)}</h3>${newsImageHTML(n, "", "eager")}<p>${esc(n.body)}</p>
+    </article>`).join("")}</div>
     <div class="gate-foot"><div class="bar"><i></i></div><button class="btn" disabled></button></div></div>`;
   document.body.appendChild(g);
   const body = $(".gate-body", g), btn = $("button", g), bar = $(".bar i", g);
-  let left = LOCK_SECONDS, scrolled = false;
+  let left = duration, reachedBottom = false, timer;
   const atEnd = () => body.scrollTop + body.clientHeight >= body.scrollHeight - 6;
   const update = () => {
-    if (!scrolled && atEnd()) scrolled = true;
-    const ok = left <= 0 && scrolled;
+    const ok = left <= 0 && reachedBottom;
     btn.disabled = !ok;
-    btn.textContent = ok ? "I've read it" : left > 0 ? `Keep reading… ${left}s` : "Scroll to the end to continue";
-    bar.style.width = ((LOCK_SECONDS - left) / LOCK_SECONDS * 100) + "%";
+    btn.textContent = ok ? "Done" : reachedBottom ? `Keep reading… ${left}s` : "Scroll to the bottom to start the timer";
+    bar.style.width = (reachedBottom ? (duration - left) / duration * 100 : 0) + "%";
   };
-  body.addEventListener("scroll", update);
-  const im = $("img", body); if (im) im.addEventListener("load", () => { scrolled = false; update(); });
-  const t = setInterval(() => { if (!document.hidden && left > 0) { left--; update(); } }, 1000);
-  btn.onclick = () => { clearInterval(t); markRead(n.id); g.remove(); document.body.style.overflow = ""; gateOpen = false; checkGate(); };
+  const startTimer = () => {
+    if (reachedBottom) return;
+    reachedBottom = true;
+    timer = setInterval(() => {
+      if (!document.hidden && left > 0) { left--; update(); }
+    }, 1000);
+    update();
+  };
+  body.addEventListener("scroll", () => {
+    if (atEnd()) startTimer();
+    update();
+  });
+  body.addEventListener("wheel", e => {
+    if (e.deltaY > 0 && atEnd()) startTimer();
+  });
+  btn.onclick = () => {
+    clearInterval(timer);
+    announcements.forEach(n => markRead(n.id));
+    g.remove(); document.body.style.overflow = ""; gateOpen = false; checkGate();
+  };
   update(); $(".gate-card", g).focus();
 }
 
 function initStudent() {
-  watch("news", query(collection(fs, "news"), orderBy("date", "desc")), () => {
-    $("#news").innerHTML = state.news.length ? state.news.map(n => `
-      <article class="news-item">
+  const expandedNews = new Set();
+  let bulletinView = "recent";
+  const renderNews = () => {
+    const v = votes();
+    const announcements = bulletinView === "recent" ? state.news.slice(0, 3) : state.news;
+    $("#news").innerHTML = announcements.length ? announcements.map(n => `
+      <article class="news-item" data-id="${n.id}">
         <div class="meta"><span class="${tagClass(n.source)}">${esc(n.source)}</span>${fmt(n.date)}</div>
-        <h3>${esc(n.title)}</h3>${n.image ? `<img src="${n.image}" alt="">` : ""}<p>${esc(n.body)}</p></article>`).join("") : `<div class="empty">Nothing posted yet. Check back soon.</div>`;
+        <h3>${esc(n.title)}</h3>${newsImageHTML(n)}<p>${previewHTML(n.body, "news:" + n.id, expandedNews)}</p>
+        <div class="react">${rxBtn("n", n.id, "like", n.likes, v["n:" + n.id] === "like")}${rxBtn("n", n.id, "dislike", n.dislikes, v["n:" + n.id] === "dislike")}</div>
+      </article>`).join("") : `<div class="empty">Nothing posted yet. Check back soon.</div>`;
+  };
+  $("#bulletinFilters").addEventListener("click", e => {
+    const button = e.target.closest("[data-bulletin-view]");
+    if (!button) return;
+    bulletinView = button.dataset.bulletinView;
+    $("#bulletinFilters").querySelectorAll("[data-bulletin-view]").forEach(item => {
+      item.setAttribute("aria-pressed", item === button);
+    });
+    renderNews();
+  });
+  watch("news", query(collection(fs, "news"), orderBy("date", "desc")), () => {
+    renderNews();
     checkGate();
+  });
+  $("#news").addEventListener("click", e => {
+    const newsImage = e.target.closest(".news-image-grid img");
+    if (newsImage) {
+      const lightbox = document.createElement("div");
+      lightbox.className = "lightbox";
+      const image = document.createElement("img");
+      image.src = newsImage.src;
+      image.alt = newsImage.alt;
+      lightbox.appendChild(image);
+      const close = () => {
+        lightbox.remove();
+        document.removeEventListener("keydown", onKey);
+      };
+      const onKey = ev => { if (ev.key === "Escape") close(); };
+      lightbox.addEventListener("click", close);
+      document.addEventListener("keydown", onKey);
+      document.body.appendChild(lightbox);
+      return;
+    }
+    const rx = e.target.closest(".rx");
+    if (rx) { react("n", rx.dataset.id, rx.dataset.rx); return; }
+    const button = e.target.closest("[data-more]");
+    if (!button) return;
+    const key = button.dataset.more;
+    expandedNews.has(key) ? expandedNews.delete(key) : expandedNews.add(key);
+    const article = button.closest(".news-item");
+    const news = article && state.news.find(n => n.id === article.dataset.id);
+    if (news) article.querySelector("p").innerHTML = previewHTML(news.body, key, expandedNews);
   });
   watch("images", query(collection(fs, "images"), orderBy("date", "desc")), renderGallery);
 
-  const two = t => { const v = preview(t); return `<span class="short">${esc(v.short)}</span><span class="full">${esc(t)}</span>`; };
   const expanded = new Set();
+  let messageFilter = "recent";
   const drawWall = () => {
-    const v = votes(), posted = [...state.messages].sort(byDate);
+    const v = votes();
+    let posted = [...state.messages].sort(byDate);
+    if (messageFilter === "liked") {
+      posted = posted.filter(m => (m.likes || 0) > 0)
+        .sort((a, b) => (b.likes || 0) - (a.likes || 0) || b.date - a.date);
+    }
+    if (messageFilter === "disliked") {
+      posted = posted.filter(m => (m.dislikes || 0) > 0)
+        .sort((a, b) => (b.dislikes || 0) - (a.dislikes || 0) || b.date - a.date);
+    }
+    if (messageFilter !== "all") posted = posted.slice(0, 3);
     $("#wall").innerHTML = posted.length ? posted.map(m => {
-      const cut = preview(m.text).cut || (m.reply && preview(m.reply).cut), open = expanded.has(m.id);
-      return `<div class="note${open ? " open" : ""}" data-id="${m.id}"><p>${two(m.text)}</p><div class="meta">Anonymous · ${fmt(m.date)}</div>
-        ${m.reply ? `<div class="reply"><strong>Admin replied</strong><p>${two(m.reply)}</p></div>` : ""}
+      const messageKey = "message:" + m.id, replyKey = "reply:" + m.id;
+      return `<div class="note" data-id="${m.id}"><p>${previewHTML(m.text, messageKey, expanded)}</p><div class="meta">Anonymous · ${fmt(m.date)}</div>
+        ${m.reply ? `<div class="reply"><strong>Admin replied</strong><p>${previewHTML(m.reply, replyKey, expanded)}</p></div>` : ""}
         <div class="react">${rxBtn("m", m.id, "like", m.likes, v["m:" + m.id] === "like")}${rxBtn("m", m.id, "dislike", m.dislikes, v["m:" + m.id] === "dislike")}</div>
-        ${cut ? `<button class="more" type="button" aria-expanded="${open}">${open ? "Show less" : "Show more"}</button>` : ""}</div>`;
-    }).join("") : `<div class="empty">No approved messages yet. Be the first to send one.</div>`;
+      </div>`;
+    }).join("") : `<div class="empty">${messageFilter === "liked" ? "No liked messages yet." : messageFilter === "disliked" ? "No disliked messages yet." : "No approved messages yet. Be the first to send one."}</div>`;
   };
   watch("messages", query(collection(fs, "messages"), where("status", "==", "approved")), drawWall);
   $("#wall").addEventListener("click", e => {
     const rx = e.target.closest(".rx"); if (rx) { react("m", rx.dataset.id, rx.dataset.rx); return; }
-    const b = e.target.closest(".more"); if (!b) return;
-    const note = b.closest(".note"), open = note.classList.toggle("open");
-    open ? expanded.add(note.dataset.id) : expanded.delete(note.dataset.id);
-    b.textContent = open ? "Show less" : "Show more"; b.setAttribute("aria-expanded", open);
+    const b = e.target.closest("[data-more]"); if (!b) return;
+    expanded.has(b.dataset.more) ? expanded.delete(b.dataset.more) : expanded.add(b.dataset.more);
+    drawWall();
+  });
+  $("#messages .message-filters").addEventListener("click", e => {
+    const button = e.target.closest("[data-filter]");
+    if (!button) return;
+    messageFilter = button.dataset.filter;
+    $("#messages .message-filters").querySelectorAll("[data-filter]").forEach(item => item.setAttribute("aria-pressed", item === button));
+    drawWall();
   });
 
   const g = $("#gallery");
@@ -186,22 +278,36 @@ function initStudent() {
   g.addEventListener("scroll", updateArrows); window.addEventListener("resize", updateArrows);
 
   const ta = $("#msg"), cnt = $("#count");
-  ta.addEventListener("input", () => cnt.textContent = `${ta.value.length} / 500`);
+  ta.addEventListener("input", () => cnt.textContent = `${ta.value.length} / ${MESSAGE_LIMIT}`);
   $("#msgForm").addEventListener("submit", async e => {
     e.preventDefault();
     const text = ta.value.trim();
     if (text.length < 5) return toast("Please write a little more.");
+    if (text.length > MESSAGE_LIMIT) return toast(`Messages can be up to ${MESSAGE_LIMIT} characters.`);
+    $("#messageConfirmText").textContent = text;
+    $("#messageConfirm").showModal();
+  });
+  $("#cancelMessage").addEventListener("click", () => $("#messageConfirm").close());
+  $("#confirmMessage").addEventListener("click", async () => {
+    const text = $("#messageConfirmText").textContent.trim();
+    const button = $("#confirmMessage");
+    button.disabled = true;
     try {
       await addDoc(collection(fs, "messages"), { text, status: "pending", date: Date.now() });
-      ta.value = ""; cnt.textContent = "0 / 500";
+      ta.value = ""; cnt.textContent = `0 / ${MESSAGE_LIMIT}`;
+      $("#messageConfirm").close();
       toast("Sent! The admin will review it before it is posted.");
     } catch (err) { console.error(err); toast("Could not send. Please try again."); }
+    finally { button.disabled = false; }
   });
 }
 
 /* ---------- ADMIN PAGE ---------- */
 let unsubs = [];
 const openReply = new Set();
+const expandedAdminNews = new Set();
+let adminMessageFilter = "recent";
+let adminNewsFilter = "latest";
 function initAdmin() {
   const loginBox = $("#loginBox"), dash = $("#dash");
 
@@ -222,23 +328,139 @@ function initAdmin() {
     try {
       await signInWithEmailAndPassword(auth, $("#user").value.trim(), $("#pass").value);
       $("#loginErr").textContent = ""; $("#pass").value = "";
-    } catch (err) { $("#loginErr").textContent = "Wrong email or password. Try again."; }
+    } catch (err) {
+      console.error(err);
+      $("#loginErr").textContent = "Incorrect username or password. Check your Firebase Auth account and try again.";
+    }
   });
   $("#logout").addEventListener("click", e => { e.preventDefault(); signOut(auth); });
+  $("#settingsBtn").addEventListener("click", () => {
+    const user = auth.currentUser;
+    if (!user) return toast("Log in before changing account settings.");
+    $("#currentAdminEmail").textContent = `Current username/email: ${user.email || "Unavailable"}`;
+    $("#currentPassword").value = "";
+    $("#newEmail").value = "";
+    $("#newPassword").value = "";
+    $("#confirmNewPassword").value = "";
+    $("#settingsError").textContent = "";
+    $("#settingsDialog").showModal();
+  });
+  $("#cancelSettings").addEventListener("click", () => $("#settingsDialog").close());
+  $("#settingsForm").addEventListener("submit", async e => {
+    e.preventDefault();
+    const user = auth.currentUser;
+    const currentPassword = $("#currentPassword").value;
+    const email = $("#newEmail").value.trim();
+    const password = $("#newPassword").value;
+    const confirmPassword = $("#confirmNewPassword").value;
+    const error = $("#settingsError"), save = $("#saveSettings");
+    error.textContent = "";
+    if (!user || !user.email) {
+      error.textContent = "Could not identify the signed-in Firebase account.";
+      return;
+    }
+    if (!email && !password) {
+      error.textContent = "Enter a new email, a new password, or both.";
+      return;
+    }
+    if (password && password.length < 6) {
+      error.textContent = "The new password must be at least 6 characters.";
+      return;
+    }
+    if (password !== confirmPassword) {
+      error.textContent = "The new passwords do not match.";
+      return;
+    }
+    if (email && email.toLowerCase() !== user.email.toLowerCase()
+      && !confirm("Changing your email requires updating the admin email in firestore.rules and publishing those rules. Continue?")) return;
+    save.disabled = true;
+    let passwordChanged = false;
+    try {
+      await reauthenticateWithCredential(user, EmailAuthProvider.credential(user.email, currentPassword));
+      if (password) {
+        await updatePassword(user, password);
+        passwordChanged = true;
+      }
+      if (email && email.toLowerCase() !== user.email.toLowerCase()) {
+        await updateEmail(user, email);
+        $("#currentAdminEmail").textContent = `Current username/email: ${user.email}`;
+        error.textContent = "Email updated. Now update the admin email in firestore.rules and publish the rules before continuing admin work.";
+        $("#currentPassword").value = "";
+        $("#newEmail").value = "";
+        $("#newPassword").value = "";
+        $("#confirmNewPassword").value = "";
+        return;
+      }
+      $("#settingsDialog").close();
+      toast(password ? "Password updated." : "No account changes were needed.");
+    } catch (err) {
+      console.error(err);
+      const reason = err.code === "auth/wrong-password" || err.code === "auth/invalid-credential"
+        ? "Current password is incorrect."
+        : err.code === "auth/email-already-in-use"
+          ? "That email is already used by another Firebase account."
+          : err.code === "auth/invalid-email"
+            ? "Enter a valid email address."
+            : err.code === "auth/requires-recent-login"
+              ? "Please log out, log back in, then try changing your account details again."
+              : "Could not update account details. Check the email and password requirements, then try again.";
+      error.textContent = passwordChanged ? `Password was updated, but the email change failed. ${reason}` : reason;
+    } finally { save.disabled = false; }
+  });
 
   document.querySelectorAll(".tabs button").forEach(b => b.addEventListener("click", () => {
     document.querySelectorAll(".tabs button").forEach(x => x.setAttribute("aria-selected", x === b));
     document.querySelectorAll(".tabpane").forEach(p => p.classList.toggle("hidden", p.id !== b.dataset.tab));
   }));
+  $(".admin-message-filters").addEventListener("click", e => {
+    const button = e.target.closest("[data-admin-filter]");
+    if (!button) return;
+    adminMessageFilter = button.dataset.adminFilter;
+    $(".admin-message-filters").querySelectorAll("[data-admin-filter]").forEach(item => item.setAttribute("aria-pressed", item === button));
+    renderAdmin();
+  });
+  $(".admin-message-views").addEventListener("click", e => {
+    const button = e.target.closest("[data-message-view]");
+    if (!button) return;
+    const posted = button.dataset.messageView === "posted";
+    $("#postedMessages").classList.toggle("hidden", !posted);
+    $("#unpostedMessages").classList.toggle("hidden", posted);
+    $(".admin-message-filters").classList.toggle("hidden", !posted);
+    $(".admin-message-views").querySelectorAll("[data-message-view]").forEach(item => item.setAttribute("aria-pressed", item === button));
+  });
+  $("#newsSort").addEventListener("click", e => {
+    const button = e.target.closest("[data-content-sort]");
+    if (!button || button.disabled) return;
+    adminNewsFilter = button.dataset.contentSort;
+    $("#newsSort").querySelectorAll("[data-content-sort]").forEach(item => item.setAttribute("aria-pressed", item === button));
+    renderAdmin();
+  });
+  $("#newsList").addEventListener("click", e => {
+    const button = e.target.closest("[data-news-expand]");
+    if (!button) return;
+    const id = button.dataset.newsExpand;
+    expandedAdminNews.has(id) ? expandedAdminNews.delete(id) : expandedAdminNews.add(id);
+    renderAdmin();
+  });
 
   $("#newsForm").addEventListener("submit", async e => {
     e.preventDefault();
     try {
-      const f = $("#nimg").files[0];
-      const image = f ? await compress(f, 800) : "";
-      await addDoc(collection(fs, "news"), { source: $("#source").value, title: $("#ntitle").value.trim(), body: $("#nbody").value.trim(), image, date: Date.now() });
+      const files = [...$("#nimg").files];
+      if (files.length > 5) return toast("Choose no more than 5 images for one news post.");
+      const images = await Promise.all(files.map(file => compress(file, 1000, 120000)));
+      const news = { source: $("#source").value, title: $("#ntitle").value.trim(), body: $("#nbody").value.trim(), images, date: Date.now() };
+      if (new TextEncoder().encode(JSON.stringify(news)).length > 950000) {
+        return toast("The news text or selected images are too large. Shorten the details or use smaller images.");
+      }
+      await addDoc(collection(fs, "news"), news);
       e.target.reset(); toast("Posted.");
-    } catch (err) { console.error(err); toast("Could not post. Check the image and that you are logged in."); }
+    } catch (err) {
+      console.error(err);
+      toast(err.message === "news-image-too-large"
+        ? "One of the selected images could not be compressed enough. Choose a smaller image."
+        : "Could not post. Check the images and that you are logged in.");
+    }
   });
 
   $("#imgForm").addEventListener("submit", async e => {
@@ -277,17 +499,28 @@ function initAdmin() {
 }
 
 // Images are stored inside Firestore (1 MB limit per document), so shrink them first.
-function compress(file, max = 900) {
+function compress(file, max = 900, maxLength = 900000) {
   return new Promise((res, rej) => {
     const r = new FileReader(); r.onerror = rej;
     r.onload = () => {
       const img = new Image(); img.onerror = rej;
       img.onload = () => {
-        const k = Math.min(1, max / Math.max(img.width, img.height));
-        const c = document.createElement("canvas"); c.width = img.width * k; c.height = img.height * k;
-        c.getContext("2d").drawImage(img, 0, 0, c.width, c.height);
-        const out = c.toDataURL("image/jpeg", 0.7);
-        out.length < 900000 ? res(out) : rej(new Error("too large"));
+        let scale = Math.min(1, max / Math.max(img.width, img.height)), quality = 0.78;
+        const c = document.createElement("canvas");
+        const encode = () => {
+          c.width = Math.max(1, Math.round(img.width * scale));
+          c.height = Math.max(1, Math.round(img.height * scale));
+          const ctx = c.getContext("2d");
+          if (!ctx) return rej(new Error("Could not process image"));
+          ctx.drawImage(img, 0, 0, c.width, c.height);
+          const out = c.toDataURL("image/jpeg", quality);
+          if (out.length <= maxLength) return res(out);
+          if (quality > 0.34) quality -= 0.12;
+          else if (scale > 0.3) { scale *= 0.8; quality = 0.78; }
+          else return rej(new Error(maxLength < 900000 ? "news-image-too-large" : "too large"));
+          encode();
+        };
+        encode();
       };
       img.src = r.result;
     };
@@ -295,12 +528,26 @@ function compress(file, max = 900) {
   });
 }
 
+function adminNewsBody(n) {
+  const p = preview(n.body), open = expandedAdminNews.has(n.id);
+  return `<p class="admin-news-body"><span class="short"${open ? " hidden" : ""}>${esc(p.short)}</span>${p.cut ? `<span class="full"${open ? "" : " hidden"}>${esc(n.body)}</span><button class="more" type="button" data-news-expand="${n.id}" aria-expanded="${open}">${open ? "See less" : "See more"}</button>` : ""}</p>`;
+}
+
 function renderAdmin() {
-  const news = [...state.news].sort(byDate), now = Date.now();
-  const imgs = state.images.filter(i => expiry(i) > now).sort(byDate);
+  const sortByReactions = (items, filter) => {
+    if (filter === "liked") return items.sort((a, b) => (b.likes || 0) - (a.likes || 0) || b.date - a.date);
+    if (filter === "disliked") return items.sort((a, b) => (b.dislikes || 0) - (a.dislikes || 0) || b.date - a.date);
+    return items.sort(byDate);
+  };
+  const sortedNews = sortByReactions([...state.news], adminNewsFilter);
+  const news = adminNewsFilter === "latest" ? sortedNews.slice(0, 3) : sortedNews;
+  const now = Date.now();
+  const imgs = state.images.filter(i => expiry(i) > now)
+    .sort((a, b) => (b.likes || 0) - (a.likes || 0) || b.date - a.date);
   $("#newsList").innerHTML = news.length ? news.map(n => `
-    <div class="row"><div style="flex:1;min-width:0"><div class="meta"><span class="${tagClass(n.source)}">${esc(n.source)}</span>${fmt(n.date)}</div>
-    <strong>${esc(n.title)}</strong>${n.image ? `<div><img class="thumb" src="${n.image}" alt=""></div>` : ""}<p>${esc(n.body)}</p></div>
+    <div class="row"><div style="flex:1;min-width:0"><div class="meta"><span class="${tagClass(n.source)}">${esc(n.source)}</span>${fmt(n.date)} · ${n.likes || 0} likes · ${n.dislikes || 0} dislikes</div>
+    <strong>${esc(n.title)}</strong>${newsImageHTML(n, "thumb")}
+    ${adminNewsBody(n)}</div>
     <div class="actions"><button class="btn danger sm" data-act="delnews" data-id="${n.id}">Delete</button></div></div>`).join("") : `<div class="empty">No news posted.</div>`;
 
   $("#imgList").innerHTML = imgs.length ? imgs.map(i => `
@@ -309,11 +556,18 @@ function renderAdmin() {
     <div class="actions"><button class="btn danger sm" data-act="delimg" data-id="${i.id}">Delete now</button></div></div>`).join("") : `<div class="empty">No photos are up right now.</div>`;
   stamps();
 
-  const order = { pending: 0, approved: 1, rejected: 2 };
-  const msgs = [...state.messages].sort((a, b) => order[a.status] - order[b.status] || b.date - a.date);
+  const msgs = [...state.messages];
+  if (adminMessageFilter === "liked") msgs.sort((a, b) => (b.likes || 0) - (a.likes || 0) || b.date - a.date);
+  else if (adminMessageFilter === "disliked") msgs.sort((a, b) => (b.dislikes || 0) - (a.dislikes || 0) || b.date - a.date);
+  else if (adminMessageFilter === "recent") {
+    const order = { pending: 0, approved: 1, rejected: 2 };
+    msgs.sort((a, b) => order[a.status] - order[b.status] || b.date - a.date);
+  } else msgs.sort(byDate);
   const pend = msgs.filter(m => m.status === "pending").length;
+  const posted = msgs.filter(m => m.status === "approved");
+  const unposted = msgs.filter(m => m.status !== "approved");
   $("#pendBadge").textContent = pend; $("#pendBadge").classList.toggle("hidden", !pend);
-  $("#msgList").innerHTML = msgs.length ? msgs.map(m => `
+  const messageHTML = m => `
     <div class="row"><div style="flex:1;min-width:0"><span class="status ${m.status}">${m.status.toUpperCase()}</span> <span class="meta">· ${fmt(m.date)} · ${m.likes || 0} likes · ${m.dislikes || 0} dislikes</span><p>${esc(m.text)}</p>
       ${m.reply ? `<div class="reply"><strong>Your reply</strong><p>${esc(m.reply)}</p></div>` : ""}
       ${openReply.has(m.id) ? `<textarea id="rep-${m.id}" maxlength="500" placeholder="Write your reply">${esc(m.reply || "")}</textarea>
@@ -324,7 +578,9 @@ function renderAdmin() {
       <button class="btn sm" data-act="reply" data-id="${m.id}">${m.reply ? "Edit reply" : "Reply"}</button>
       ${m.reply ? `<button class="btn ghost sm" data-act="delreply" data-id="${m.id}">Remove reply</button>` : ""}
       ${m.status !== "rejected" ? `<button class="btn ghost sm" data-act="reject" data-id="${m.id}">Reject</button>` : ""}
-      <button class="btn danger sm" data-act="delmsg" data-id="${m.id}">Delete</button></div></div>`).join("") : `<div class="empty">No student messages yet.</div>`;
+      <button class="btn danger sm" data-act="delmsg" data-id="${m.id}">Delete</button></div></div>`;
+  $("#postedMsgList").innerHTML = posted.length ? posted.map(messageHTML).join("") : `<div class="empty">No messages have been posted.</div>`;
+  $("#unpostedMsgList").innerHTML = unposted.length ? unposted.map(messageHTML).join("") : `<div class="empty">No pending or rejected messages.</div>`;
 }
 
 if (page === "student") initStudent();

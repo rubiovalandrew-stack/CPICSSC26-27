@@ -3,25 +3,29 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>SSC Student Portal</title>
+<title>CPIC Supreme Student Council</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@700;800&family=Source+Sans+3:wght@400;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="style.css">
 </head>
 <body data-page="student">
 <header class="top"><div class="wrap">
-  <a class="brand" href="#">SSC<span>.</span></a>
+  <a class="brand" href="#">CPIC Supreme Student Council<span>.</span></a>
   <nav><a href="#news-h">Bulletin</a><a href="#photos">Moments</a><a href="#messages">Messages</a><a href="#send">Send message</a></nav>
 </div></header>
 
 <div class="hero"><div class="wrap">
-  <h1>What's happening at SSC</h1>
-  <p>Announcements from the school admin and the SSC, school photos, and a safe place to share what's on your mind.</p>
+  <h1>What's happening at CPIC Supreme Student Council</h1>
+  <p>Announcements from the school admin and the CPIC Supreme Student Council, school photos, and a safe place to share what's on your mind.</p>
   <a class="btn" href="#send">Send an anonymous message</a>
 </div></div>
 
 <section class="block"><div class="wrap">
-  <h2 id="news-h">Campus Bulletin</h2><p class="sub">Announcements from the admin and the SSC, newest first.</p>
+  <h2 id="news-h">Campus Bulletin</h2><p class="sub">Announcements from the admin and the CPIC Supreme Student Council, newest first.</p>
+  <div class="message-filters" id="bulletinFilters" role="group" aria-label="Choose how many announcements to show">
+    <button type="button" data-bulletin-view="recent" aria-pressed="true">Recent</button>
+    <button type="button" data-bulletin-view="all" aria-pressed="false">All</button>
+  </div>
   <div class="news-feature" id="news"></div>
 </div></section>
 
@@ -32,6 +36,12 @@
 
 <section class="block" id="messages"><div class="wrap">
   <h2>Student messages</h2><p class="sub">Anonymous messages the admin has approved.</p>
+  <div class="message-filters" role="group" aria-label="Filter student messages">
+    <button type="button" data-filter="all" aria-pressed="false">All</button>
+    <button type="button" data-filter="recent" aria-pressed="true">Latest</button>
+    <button type="button" data-filter="liked" aria-pressed="false">Most liked</button>
+    <button type="button" data-filter="disliked" aria-pressed="false">Most disliked</button>
+  </div>
   <div class="wall" id="wall"></div>
 </div></section>
 
@@ -40,13 +50,25 @@
   <p class="sub">We don't ask for your name. The admin reads every message and decides whether it is posted.</p>
   <form class="panel" id="msgForm">
     <label for="msg">Your message</label>
-    <textarea id="msg" maxlength="500" required placeholder="Write your message here"></textarea>
-    <div class="count" id="count">0 / 500</div>
+    <textarea id="msg" maxlength="1500" required placeholder="Write your message here"></textarea>
+    <div class="count" id="count">0 / 1500</div>
     <button class="btn" type="submit">Send message</button>
   </form>
+  <dialog class="confirm-dialog" id="messageConfirm" aria-labelledby="messageConfirmTitle">
+    <div class="confirm-dialog-body">
+      <h2 id="messageConfirmTitle">Before you send</h2>
+      <p>Submitted messages will be reviewed by the administrator before publication. Publication does not imply approval or endorsement by the administrator, the school, or CPIC. All published content is solely the expression and responsibility of the individual sender. The administrator, school, and CPIC expressly disclaim all liability for any views, content, or statements contained in published submissions.</p>
+      <p class="meta">Message you’re about to send:</p>
+      <blockquote id="messageConfirmText"></blockquote>
+      <div class="confirm-actions">
+        <button class="btn ghost" type="button" id="cancelMessage">Go back</button>
+        <button class="btn" type="button" id="confirmMessage">Confirm and send</button>
+      </div>
+    </div>
+  </dialog>
 </div></section>
 
-<footer><div class="wrap">© SSC · <a href="admin.html">Admin login</a></div></footer>
+<footer><div class="wrap">© CPIC Supreme Student Council · <a href="admin.html">Admin login</a></div></footer>
 <script type="module" src="app.js"></script>
 </body>
 </html>

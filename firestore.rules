@@ -20,7 +20,11 @@ service cloud.firestore {
         && delta('dislikes') >= -1 && delta('dislikes') <= 1;
     }
 
-    match /news/{id} { allow read: if true; allow write: if isAdmin(); }
+    match /news/{id} {
+      allow read: if true;
+      allow create, delete: if isAdmin();
+      allow update: if isAdmin() || onlyReacting(['likes','dislikes']);
+    }
 
     match /images/{id} {
       allow read: if true;
@@ -34,7 +38,7 @@ service cloud.firestore {
                     && request.resource.data.status == 'pending'
                     && request.resource.data.text is string
                     && request.resource.data.text.size() >= 5
-                    && request.resource.data.text.size() <= 500;
+                    && request.resource.data.text.size() <= 1500;
       allow update: if isAdmin()
                     || (resource.data.status == 'approved' && onlyReacting(['likes','dislikes']));
       allow delete: if isAdmin();
