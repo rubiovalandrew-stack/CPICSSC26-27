@@ -10,8 +10,10 @@ service cloud.firestore {
     }
     function onlyReacting(fields) {
       return request.resource.data.diff(resource.data).affectedKeys().hasOnly(fields)
-        && request.resource.data.get('likes', 0) is int
-        && request.resource.data.get('dislikes', 0) is int
+        && (request.resource.data.get('likes', 0) is int
+            || request.resource.data.get('likes', 0) is float)
+        && (request.resource.data.get('dislikes', 0) is int
+            || request.resource.data.get('dislikes', 0) is float)
         && request.resource.data.get('likes', 0) >= 0
         && request.resource.data.get('dislikes', 0) >= 0
         && delta('likes') >= -1 && delta('likes') <= 1
