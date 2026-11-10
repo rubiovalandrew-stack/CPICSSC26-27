@@ -215,41 +215,43 @@ function openGate(announcements) {
       <div class="meta"><span class="${tagClass(n.source)}">${esc(n.source)}</span>${fmt(n.date)}</div>
       <h3>${esc(n.title)}</h3>${newsImageHTML(n, "", "eager", true)}<p>${esc(n.body)}</p>
     </article>`).join("")}</div>
-    <div class="gate-foot"><div class="bar"><i></i></div><button class="btn" disabled></button></div></div>`;
+    <div class="gate-foot"><div class="gate-count" role="timer"></div><div class="bar"><i></i></div><button class="btn" disabled></button></div></div>`;
   document.body.appendChild(g);
-  const body = $(".gate-body", g), btn = $("button", g), bar = $(".bar i", g);
-  let left = duration, reachedBottom = false, timer;
-  const atEnd = () => body.scrollTop + body.clientHeight >= body.scrollHeight - 6;
+  const body = $(".gate-body", g), btn = $(".gate-foot button", g), bar = $(".bar i", g), count = $(".gate-count", g);
+  let left = duration, started = false, timer;
+  const secs = n => `${n} second${n === 1 ? "" : "s"}`;
   const update = () => {
-    const ok = left <= 0 && reachedBottom;
+    const ok = started && left <= 0;
     btn.disabled = !ok;
-    btn.textContent = ok ? "Done" : reachedBottom ? `Keep reading… ${left}s` : "Scroll to the bottom to start the timer";
-    bar.style.width = (reachedBottom ? (duration - left) / duration * 100 : 0) + "%";
+    btn.textContent = ok ? "Done reading" : started ? `Done reading (${left}s)` : "Scroll down to start the timer";
+    count.textContent = ok ? "Time's up. You can close this now." : started ? `⏱ ${secs(left)} left` : `⬇ Scroll to the bottom to start the ${secs(duration)} timer`;
+    bar.style.width = started ? ((duration - left) / duration * 100) + "%" : "0%";
   };
-  const startTimer = () => {
-    if (reachedBottom) return;
-    reachedBottom = true;
-    timer = setInterval(() => {
-      if (!document.hidden && left > 0) { left--; update(); }
+  // The countdown starts only once the student has scrolled to the end (or nothing needs scrolling).
+  const atEnd = () => body.scrollTop + body.clientHeight >= body.scrollHeight - 12;
+  const start = () => {
+    if (started) return;
+    started = true;
+    timer = setInterval(() => {   // pauses while the tab is hidden
+      if (!document.hidden && left > 0) { left--; update(); if (left <= 0) clearInterval(timer); }
     }, 1000);
     update();
   };
-  body.addEventListener("scroll", () => {
-    if (atEnd()) startTimer();
-    update();
-  });
-  body.addEventListener("wheel", e => {
-    if (e.deltaY > 0 && atEnd()) startTimer();
-  });
-  // If everything already fits on screen there is nothing to scroll, so start the timer right away.
-  const checkStart = () => { if (!reachedBottom && atEnd()) startTimer(); };
-  body.addEventListener("load", checkStart, true);   // re-check as images finish loading
-  setTimeout(checkStart, 400);
-  btn.onclick = () => {
-    clearInterval(timer);
+  const check = () => { if (atEnd()) start(); };
+  body.addEventListener("scroll", check, { passive: true });
+  window.addEventListener("resize", check);
+  // Wait for the images so a short pop-up isn't treated as "already scrolled" before it grows.
+  const waiting = [...g.querySelectorAll("img")].filter(im => !im.complete);
+  let pending = waiting.length;
+  const imageDone = () => { if (--pending <= 0) check(); };
+  if (!pending) requestAnimationFrame(check);
+  else waiting.forEach(im => { im.addEventListener("load", imageDone); im.addEventListener("error", imageDone); });
+  btn.addEventListener("click", () => {
+    if (!started || left > 0) return;
+    clearInterval(timer); window.removeEventListener("resize", check);
     announcements.forEach(n => markRead(n.id));
     g.remove(); document.body.style.overflow = ""; gateOpen = false; checkGate();
-  };
+  });
   update(); $(".gate-card", g).focus();
 }
 

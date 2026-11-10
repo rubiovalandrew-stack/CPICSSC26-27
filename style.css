@@ -237,3 +237,6 @@ body[data-page=student] header.top nav a:hover,body[data-page=student] header.to
 .tabs button{display:flex;align-items:center;justify-content:center;gap:6px;padding:10px 12px;text-align:center;white-space:nowrap}
 .tabs .badge{margin-left:0}
 @media(max-width:560px){.tabs{grid-template-columns:repeat(2,minmax(0,1fr))}}
+
+/* v11: pop-up countdown */
+.gate-count{text-align:center;font-weight:700;margin-bottom:8px;color:var(--gold-d)}
