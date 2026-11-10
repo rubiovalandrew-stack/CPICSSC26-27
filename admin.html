@@ -69,19 +69,28 @@
 
     <div class="tabpane hidden" id="tNews">
       <div class="admin-grid two">
-        <form class="panel" id="newsForm">
-          <h2>Post news</h2>
-          <p class="meta">News is deleted automatically 24 hours after posting.</p>
-          <label for="source">Posted by</label>
-          <select id="source"><option>Admin</option><option>SSC</option></select>
-          <label for="ntitle">Title</label>
-          <input type="text" id="ntitle" required maxlength="120">
-          <label for="nbody">Details</label>
-          <textarea id="nbody" required></textarea>
-          <label for="nimg">Images (optional, up to 5)</label>
-          <input type="file" id="nimg" accept="image/*" multiple style="margin-bottom:14px">
-          <button class="btn" type="submit">Post news</button>
-        </form>
+        <div class="news-admin-forms">
+          <form class="panel" id="newsForm">
+            <h2>Post news</h2>
+            <p class="meta">News is deleted automatically 24 hours after posting.</p>
+            <label for="source">Posted by</label>
+            <select id="source"><option>Admin</option><option>SSC</option></select>
+            <label for="ntitle">Title</label>
+            <input type="text" id="ntitle" required maxlength="120">
+            <label for="nbody">Details</label>
+            <textarea id="nbody" required></textarea>
+            <label for="nimg">Images (optional, up to 5)</label>
+            <input type="file" id="nimg" accept="image/*" multiple style="margin-bottom:14px">
+            <button class="btn" type="submit">Post news</button>
+          </form>
+          <form class="panel" id="newsPopupSettingsForm">
+            <h2>News pop-up timer</h2>
+            <p class="meta">Choose how long the new-news pop-up stays locked in total, regardless of how many news items it contains. The countdown begins after the student reaches the bottom of the pop-up.</p>
+            <label for="newsPopupLockSeconds">Locked duration (seconds)</label>
+            <input type="number" id="newsPopupLockSeconds" min="1" max="86400" step="1" value="15" required>
+            <button class="btn" type="submit" id="saveNewsPopupSettings" style="margin-top:14px">Save timer</button>
+          </form>
+        </div>
         <div><h2>Posted news</h2>
           <div class="content-filters" id="newsSort" role="group" aria-label="Sort posted news">
             <button type="button" data-content-sort="all" aria-pressed="false">All</button>

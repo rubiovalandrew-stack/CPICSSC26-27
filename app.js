@@ -10,7 +10,7 @@ const fs = initializeFirestore(app, { experimentalAutoDetectLongPolling: true })
 const auth = getAuth(app);
 
 const DAY = 864e5;        // photos stay up for 24 hours
-const LOCK_SECONDS = 15;  // new news stays locked this long
+const LOCK_SECONDS = 15;  // default news pop-up lock duration
 const NEW_DAYS = 7;       // only news newer than this triggers the lock
 const MESSAGE_LIMIT = 1500;
 
@@ -94,7 +94,12 @@ function toast(msg) {
   document.body.appendChild(t); setTimeout(() => t.remove(), 2800);
 }
 
-const state = { news: [], images: [], messages: [], comments: [], contact: { qrCodes: [], phoneNumbers: [] }, importantAnnouncement: null };
+const state = {
+  news: [], images: [], messages: [], comments: [],
+  contact: { qrCodes: [], phoneNumbers: [] },
+  importantAnnouncement: null,
+  newsPopupSettings: { lockSeconds: LOCK_SECONDS }
+};
 const loaded = new Set();
 function watch(name, q, render) {
   return onSnapshot(q, snap => {
@@ -106,12 +111,16 @@ function watch(name, q, render) {
 function watchDocument(name, reference, render, fallback = { qrCodes: [], phoneNumbers: [] }) {
   return onSnapshot(reference, snap => {
     state[name] = snap.exists() ? snap.data() : fallback;
+    loaded.add(name);
     render();
   }, err => {
     console.error(err);
-    toast(name === "importantAnnouncement"
+    const message = name === "importantAnnouncement"
       ? "Could not load the important announcement. Check your connection."
-      : "Could not load contact details. Check your connection.");
+      : name === "newsPopupSettings"
+        ? "Could not load the news pop-up timer. Check your connection."
+        : "Could not load contact details. Check your connection.";
+    toast(message);
   });
 }
 
@@ -242,15 +251,19 @@ let gateOpen = false;
 let closeNewsGate = null;
 const readSet = () => { try { return new Set(JSON.parse(localStorage.getItem("ssc_read") || "[]")); } catch (e) { return new Set(); } };
 const markRead = id => { const s = readSet(); s.add(id); try { localStorage.setItem("ssc_read", JSON.stringify([...s])); } catch (e) {} };
+const newsPopupLockSeconds = () => {
+  const seconds = Number(state.newsPopupSettings && state.newsPopupSettings.lockSeconds);
+  return Number.isInteger(seconds) && seconds >= 1 && seconds <= 86400 ? seconds : LOCK_SECONDS;
+};
 function checkGate() {
-  if (gateOpen || (state.importantAnnouncement && Number(state.importantAnnouncement.lockUntil) > Date.now())) return;
+  if (!loaded.has("newsPopupSettings") || gateOpen || (state.importantAnnouncement && Number(state.importantAnnouncement.lockUntil) > Date.now())) return;
   const read = readSet(), cutoff = Date.now() - NEW_DAYS * DAY;
   const unread = state.news.filter(n => !read.has(n.id) && n.date > cutoff && isLive(n));
   if (unread.length) openGate(unread);
 }
 function openGate(announcements) {
   gateOpen = true; document.body.style.overflow = "hidden";
-  const duration = LOCK_SECONDS * announcements.length;
+  const duration = newsPopupLockSeconds();
   const g = document.createElement("div"); g.className = "gate";
   g.innerHTML = `<div class="gate-card" role="dialog" aria-modal="true" aria-labelledby="gt" tabindex="-1">
     <div class="gate-head"><h2 id="gt">New announcements</h2><span class="meta">${announcements.length} announcement${announcements.length === 1 ? "" : "s"} · ${duration} second${duration === 1 ? "" : "s"} reading time</span></div>
@@ -428,6 +441,7 @@ function initStudent() {
     checkGate();
   };
   watchDocument("importantAnnouncement", doc(fs, "siteContent", "importantAnnouncement"), renderImportantAnnouncement, null);
+  watchDocument("newsPopupSettings", doc(fs, "siteContent", "newsPopupSettings"), checkGate, { lockSeconds: LOCK_SECONDS });
   let lastSig = "";
   const liveSig = () => [...state.news, ...state.messages].filter(isLive).map(i => i.id).join();
   const renderNews = () => {
@@ -630,7 +644,8 @@ function initAdmin() {
       watch("messages", collection(fs, "messages"), renderAdmin),
       watch("comments", collection(fs, "comments"), renderAdmin),
       watchDocument("contact", doc(fs, "siteContent", "contact"), renderContactAdmin),
-      watchDocument("importantAnnouncement", doc(fs, "siteContent", "importantAnnouncement"), renderImportantAdmin, null)
+      watchDocument("importantAnnouncement", doc(fs, "siteContent", "importantAnnouncement"), renderImportantAdmin, null),
+      watchDocument("newsPopupSettings", doc(fs, "siteContent", "newsPopupSettings"), renderNewsPopupSettings, { lockSeconds: LOCK_SECONDS })
     );
   });
 
@@ -723,6 +738,23 @@ function initAdmin() {
     document.querySelectorAll(".tabs button").forEach(x => x.setAttribute("aria-selected", x === b));
     document.querySelectorAll(".tabpane").forEach(p => p.classList.toggle("hidden", p.id !== b.dataset.tab));
   }));
+  $("#newsPopupSettingsForm").addEventListener("submit", async e => {
+    e.preventDefault();
+    const seconds = Number($("#newsPopupLockSeconds").value);
+    if (!Number.isInteger(seconds) || seconds < 1 || seconds > 86400) {
+      return toast("Choose a lock duration from 1 to 86400 seconds.");
+    }
+    const button = $("#saveNewsPopupSettings");
+    button.disabled = true;
+    try {
+      await setDoc(doc(fs, "siteContent", "newsPopupSettings"), { lockSeconds: seconds });
+      state.newsPopupSettings = { lockSeconds: seconds };
+      toast(`News pop-up timer saved: ${secs(seconds)}.`);
+    } catch (err) {
+      console.error("Could not save news pop-up timer:", err);
+      toast("Could not save the timer. Check your connection and that you are logged in.");
+    } finally { button.disabled = false; }
+  });
   $(".admin-message-filters").addEventListener("click", e => {
     const button = e.target.closest("[data-admin-filter]");
     if (!button) return;
@@ -1106,6 +1138,11 @@ function renderImportantAdmin() {
     ${announcement.image ? `<img src="${esc(announcement.image)}" alt="${esc(announcement.title || "Important announcement")}">` : ""}
     <div class="meta">Lock duration: ${secs(lockSeconds(announcement))} · Lock end: ${fmtTime(lockUntil || Number(announcement.publishedAt) || Date.now())}</div>
     <div class="important-admin-actions"><button class="btn sm" type="button" data-important-edit>Edit announcement</button></div>`;
+}
+
+function renderNewsPopupSettings() {
+  const seconds = newsPopupLockSeconds();
+  $("#newsPopupLockSeconds").value = String(seconds);
 }
 
 function renderContactAdmin() {

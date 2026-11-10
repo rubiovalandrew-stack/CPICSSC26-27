@@ -286,6 +286,7 @@ body[data-page=student] header.top nav a:hover,body[data-page=student] header.to
 .important-announcement-foot .gate-count{margin-bottom:8px}
 .important-announcement-foot .bar{margin:0}
 .important-announcement-foot .btn{width:100%}
+.news-admin-forms{display:grid;gap:26px;align-content:start}
 /* v14: white, tappable announcement card with image preview */
 .important-banner{padding:40px 20px 0}
 .important-banner-inner{display:block;width:100%;max-width:1000px;margin:0 auto;text-align:left;font:inherit;color:#12264a;background:#fff;border:1px solid #d9e1ee;border-left:8px solid var(--gold);border-radius:var(--radius);padding:20px 24px 18px;cursor:pointer;box-shadow:0 10px 28px rgba(18,38,74,.18);animation:important-pop .7s cubic-bezier(.2,1.4,.4,1) backwards,important-pulse 2.6s ease-out .9s infinite}

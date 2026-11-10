@@ -42,6 +42,11 @@ service cloud.firestore {
       allow create, update, delete: if isAdmin();
     }
 
+    match /siteContent/newsPopupSettings {
+      allow read: if true;
+      allow create, update, delete: if isAdmin();
+    }
+
     match /messages/{id} {
       allow read: if resource.data.status == 'approved' || isAdmin();
       allow create: if request.resource.data.keys().hasOnly(['text','status','date'])
