@@ -1,6 +1,6 @@
 /* SSC School Site – Firebase version (Firestore + Authentication) */
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-import { initializeFirestore, limit, collection, addDoc, deleteDoc, deleteField, updateDoc, setDoc, doc, query, where, orderBy, onSnapshot, Timestamp, increment, getDocs } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+import { initializeFirestore, limit, collection, addDoc, deleteDoc, deleteField, updateDoc, setDoc, doc, query, where, orderBy, onSnapshot, Timestamp, increment, getDocs, writeBatch } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged, EmailAuthProvider, reauthenticateWithCredential, updateEmail, updatePassword } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 import { firebaseConfig } from "./firebase-config.js";
 
@@ -95,7 +95,7 @@ function toast(msg) {
 }
 
 const state = {
-  news: [], images: [], messages: [], comments: [],
+  news: [], images: [], imageSubmissions: [], messages: [], comments: [],
   contact: { qrCodes: [], phoneNumbers: [] },
   importantAnnouncement: null,
   newsPopupSettings: { lockSeconds: LOCK_SECONDS }
@@ -166,21 +166,21 @@ setInterval(() => {
 
 /* ---------- STUDENT PAGE ---------- */
 function renderGallery() {
-  const g = $("#gallery"), keep = g.scrollLeft, v = votes();
-  const n = Date.now(), list = state.images.filter(i => expiry(i) > n);
-  g.innerHTML = list.length ? list.map(i => `
-    <figure data-id="${i.id}" data-up="${i.date}" data-exp="${expiry(i)}"><img src="${i.src}" alt="${esc(i.caption || "School photo")}" loading="lazy">
-    <figcaption>${stampHTML(i)}</figcaption>${rxBtn("i", i.id, "heart", i.likes, v["i:" + i.id] === "like")}</figure>`).join("") : `<div class="empty">No photos right now. New photos appear here for 24 hours.</div>`;
-  g.scrollLeft = keep;
-  stamps(); updateArrows();
+  const g = $("#gallery"), v = votes();
+  const n = Date.now(), list = state.images.filter(i => expiry(i) > n)
+    .sort((a, b) => (b.likes || 0) - (a.likes || 0) || b.date - a.date);
+  const photo = (i, featured = false) => `
+    <figure class="${featured ? "featured" : ""}" data-id="${i.id}" data-up="${i.date}" data-exp="${expiry(i)}"><img src="${esc(i.src)}" alt="${esc(i.caption || "School photo")}" loading="lazy">
+    <figcaption>${stampHTML(i)}</figcaption>${rxBtn("i", i.id, "heart", i.likes, v["i:" + i.id] === "like")}</figure>`;
+  g.innerHTML = list.length ? `
+    ${photo(list[0], true)}
+    <div class="gallery-thumbnails">${list.slice(1).map(i => photo(i)).join("")}
+      <button class="gallery-submit" type="button" aria-label="Submit a photo for admin approval"><span aria-hidden="true">+</span><span>Share a Campus Moment</span></button>
+    </div>` : `<div class="empty">No photos right now. New photos appear here for 24 hours.</div>
+      <button class="gallery-submit" type="button" aria-label="Submit a photo for admin approval"><span aria-hidden="true">+</span><span>Share a Campus Moment</span></button>`;
+  stamps();
   const lb = $(".lightbox .rx");   // keep an open full-size photo in sync
   if (lb) { const im = state.images.find(x => x.id === lb.dataset.id); if (im) { const on = v["i:" + im.id] === "like"; $("span", lb).textContent = im.likes || 0; lb.classList.toggle("on", on); lb.setAttribute("aria-pressed", on); } }
-}
-function updateArrows() {
-  const g = $("#gallery"); if (!g) return;
-  const more = g.scrollWidth > g.clientWidth + 4;
-  $(".arrow.prev").hidden = !more || g.scrollLeft < 4;
-  $(".arrow.next").hidden = !more || g.scrollLeft + g.clientWidth >= g.scrollWidth - 4;
 }
 function validPhone(phone) { return /^\+?[\d\s().-]+$/.test(phone); }
 const PLATFORMS = { facebook: "Facebook", instagram: "Instagram", x: "X", other: "Other" };
@@ -583,6 +583,7 @@ function initStudent() {
 
   const g = $("#gallery");
   g.addEventListener("click", e => {
+    if (e.target.closest(".gallery-submit")) { $("#imageSubmissionDialog").showModal(); return; }
     const rx = e.target.closest(".rx"); if (rx) { react("i", rx.dataset.id, "like"); return; }
     const fig = e.target.closest("figure[data-id]"); if (!fig) return;
     const i = state.images.find(x => x.id === fig.dataset.id); if (!i) return;
@@ -595,9 +596,30 @@ function initStudent() {
     lb.onclick = ev => { if (ev.target.closest(".rx")) { react("i", i.id, "like"); return; } close(); };
     document.addEventListener("keydown", onKey); document.body.appendChild(lb);
   });
-  $(".arrow.prev").onclick = () => g.scrollBy({ left: -g.clientWidth, behavior: "smooth" });
-  $(".arrow.next").onclick = () => g.scrollBy({ left: g.clientWidth, behavior: "smooth" });
-  g.addEventListener("scroll", updateArrows); window.addEventListener("resize", updateArrows);
+  $("#cancelImageSubmission").addEventListener("click", () => $("#imageSubmissionDialog").close());
+  $("#imageSubmissionForm").addEventListener("submit", async e => {
+    e.preventDefault();
+    const file = $("#studentImage").files[0];
+    if (!file) return toast("Choose an image first.");
+    const button = $("#submitImage");
+    button.disabled = true;
+    try {
+      const src = await compress(file, 900);
+      const submission = { src, caption: $("#studentImageCaption").value.trim(), status: "pending", date: Date.now() };
+      if (new TextEncoder().encode(JSON.stringify(submission)).length > 950000) {
+        return toast("The image is too large to submit. Choose a smaller image.");
+      }
+      await addDoc(collection(fs, "imageSubmissions"), submission);
+      e.target.reset();
+      $("#imageSubmissionDialog").close();
+      toast("Photo submitted. It will appear if an admin approves it.");
+    } catch (err) {
+      console.error("Could not submit campus photo:", err);
+      toast(err.message === "too large"
+        ? "The image could not be compressed enough. Choose a smaller image."
+        : "Could not submit your photo. Please try again.");
+    } finally { button.disabled = false; }
+  });
 
   const ta = $("#msg"), cnt = $("#count");
   ta.addEventListener("input", () => cnt.textContent = `${ta.value.length} / ${MESSAGE_LIMIT}`);
@@ -641,6 +663,7 @@ function initAdmin() {
     unsubs.push(
       watch("news", query(collection(fs, "news"), orderBy("date", "desc")), renderAdmin),
       watch("images", query(collection(fs, "images"), orderBy("date", "desc")), () => { purge(); renderAdmin(); }),
+      watch("imageSubmissions", query(collection(fs, "imageSubmissions"), orderBy("date", "desc")), renderAdmin),
       watch("messages", collection(fs, "messages"), renderAdmin),
       watch("comments", collection(fs, "comments"), renderAdmin),
       watchDocument("contact", doc(fs, "siteContent", "contact"), renderContactAdmin),
@@ -943,9 +966,29 @@ function initAdmin() {
         openReply.delete(id); return toast("Reply posted.");
       }
       if (act === "delreply") { if (!confirm("Remove your reply?")) return; return await updateDoc(doc(fs, "messages", id), { reply: "" }); }
+      if (act === "approveimg") {
+        const submission = state.imageSubmissions.find(image => image.id === id);
+        if (!submission) return toast("That photo submission is no longer available.");
+        const batch = writeBatch(fs), now = Date.now();
+        const imageRef = doc(collection(fs, "images"));
+        batch.set(imageRef, {
+          src: submission.src,
+          caption: submission.caption || "",
+          date: now,
+          expireAt: Timestamp.fromMillis(now + DAY)
+        });
+        batch.delete(doc(fs, "imageSubmissions", id));
+        await batch.commit();
+        return toast("Photo approved and published for 24 hours.");
+      }
+      if (act === "rejectimg") {
+        if (!confirm("Reject and delete this photo submission?")) return;
+        await deleteDoc(doc(fs, "imageSubmissions", id));
+        return toast("Photo submission rejected.");
+      }
       if (act.startsWith("del")) {
         if (!confirm("Delete this? This cannot be undone.")) return;
-        const col = act === "delnews" ? "news" : act === "delimg" ? "images" : act === "delcomment" ? "comments" : "messages";
+        const col = act === "delnews" ? "news" : act === "delimg" ? "images" : act === "delsubmission" ? "imageSubmissions" : act === "delcomment" ? "comments" : "messages";
         if (act === "delmsg") {
           const comments = await getDocs(query(collection(fs, "comments"), where("messageId", "==", id)));
           await Promise.all(comments.docs.map(comment => deleteDoc(comment.ref)));
@@ -1035,6 +1078,10 @@ function renderAdmin() {
     <div class="row" data-up="${i.date}" data-exp="${expiry(i)}"><div style="display:flex;gap:12px;align-items:center"><img class="thumb" src="${i.src}" alt="">
     <div>${esc(i.caption || "(no caption)")}${stampHTML(i)}<div class="meta">${i.likes || 0} likes</div></div></div>
     <div class="actions"><button class="btn danger sm" data-act="delimg" data-id="${i.id}">Delete now</button></div></div>`).join("") : `<div class="empty">No photos are up right now.</div>`;
+  $("#imageSubmissions").innerHTML = state.imageSubmissions.length ? state.imageSubmissions.map(i => `
+    <div class="row"><div style="display:flex;gap:12px;align-items:center;min-width:0"><img class="thumb" src="${esc(i.src)}" alt="Submitted photo preview">
+    <div style="min-width:0">${esc(i.caption || "(no caption)")}<div class="meta">${fmt(i.date)} · Pending approval</div></div></div>
+    <div class="actions"><button class="btn ok sm" data-act="approveimg" data-id="${i.id}">Approve</button><button class="btn danger sm" data-act="rejectimg" data-id="${i.id}">Reject</button></div></div>`).join("") : `<div class="empty">No student photo submissions to review.</div>`;
   stamps();
 
   const msgs = state.messages.filter(m => m.status !== "approved" || isLive(m));
@@ -1077,7 +1124,7 @@ function renderAdmin() {
       ${m.status !== "rejected" ? `<button class="btn ghost sm" data-act="reject" data-id="${m.id}">Reject</button>` : ""}
       <button class="btn danger sm" data-act="delmsg" data-id="${m.id}">Delete</button></div>`;
     return `
-    <div class="row"><div style="flex:1;min-width:0"><span class="status ${m.status}">${m.status.toUpperCase()}</span> <span class="meta">· ${fmt(m.date)} · ${m.likes || 0} likes · ${m.dislikes || 0} dislikes</span><p>${esc(m.text)}</p>
+    <div class="row"><div style="flex:1;min-width:0"><span class="status ${m.status}">${m.status.toUpperCase()}</span> <span class="meta">· Sent ${fmtTime(m.date)} · ${m.likes || 0} likes · ${m.dislikes || 0} dislikes</span><p>${esc(m.text)}</p>
       ${m.reply ? `<div class="reply"><strong>Your reply</strong><p>${esc(m.reply)}</p></div>` : ""}
       ${openReply.has(m.id) ? `<textarea id="rep-${m.id}" maxlength="500" placeholder="Write your reply">${esc(m.reply || "")}</textarea>
         <div class="actions" style="margin-top:8px"><button class="btn ok sm" data-act="savereply" data-id="${m.id}">Send reply</button><button class="btn ghost sm" data-act="cancelreply" data-id="${m.id}">Cancel</button></div>` : ""}

@@ -32,10 +32,24 @@
 </div></section>
 
 <section class="block" id="photos"><div class="wrap">
-  <h2>Campus Moments</h2><p class="sub">Fresh photos from around school. Each one stays up for 24 hours. Swipe for more, tap a photo to see it full size.</p>
-  <div class="strip"><button class="arrow prev" type="button" aria-label="Previous photos" hidden>&#8249;</button><div class="gallery" id="gallery"></div><button class="arrow next" type="button" aria-label="Next photos" hidden>&#8250;</button></div>
+  <h2>Campus Moments</h2><p class="sub">Fresh photos from around school stay up for 24 hours, swipe for more, tap a photo to view it full size, and swipe at the end to send yours for a chance to be posted too.</p>
+  <div class="gallery" id="gallery"></div>
 </div></section>
 
+<dialog class="confirm-dialog" id="imageSubmissionDialog" aria-labelledby="imageSubmissionTitle">
+  <form class="confirm-dialog-body" id="imageSubmissionForm">
+    <h2 id="imageSubmissionTitle">Submit a Campus Moment</h2>
+    <p class="settings-warning">Your photo will be reviewed by an admin. It will only appear in Campus Moments if approved.</p>
+    <label for="studentImage">Image file</label>
+    <input type="file" id="studentImage" accept="image/*" required>
+    <label for="studentImageCaption">Caption (optional)</label>
+    <input type="text" id="studentImageCaption" maxlength="100">
+    <div class="confirm-actions">
+      <button class="btn ghost" type="button" id="cancelImageSubmission">Cancel</button>
+      <button class="btn" type="submit" id="submitImage">Submit for approval</button>
+    </div>
+  </form>
+</dialog>
 
 <section class="block" id="messages"><div class="wrap">
   <h2>Student messages</h2><p class="sub">Anonymous messages the admin has approved. Each one stays up for 24 hours after it is posted.</p>

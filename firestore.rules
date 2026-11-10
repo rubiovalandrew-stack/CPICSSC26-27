@@ -32,6 +32,18 @@ service cloud.firestore {
       allow update: if isAdmin() || onlyReacting(['likes']);
     }
 
+    match /imageSubmissions/{id} {
+      allow create: if request.resource.data.keys().hasOnly(['src','caption','status','date'])
+                    && request.resource.data.src is string
+                    && request.resource.data.src.matches('^data:image/jpeg;base64,[A-Za-z0-9+/=]+$')
+                    && request.resource.data.src.size() <= 900000
+                    && request.resource.data.caption is string
+                    && request.resource.data.caption.size() <= 100
+                    && request.resource.data.status == 'pending'
+                    && request.resource.data.date is int;
+      allow read, update, delete: if isAdmin();
+    }
+
     match /siteContent/contact {
       allow read: if true;
       allow create, update, delete: if isAdmin();

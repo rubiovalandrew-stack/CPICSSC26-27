@@ -72,6 +72,7 @@ footer{background:#12264a;color:#b6c5e3;padding:26px 0;text-align:center;font-si
 .confirm-dialog blockquote{margin:6px 0 18px;padding:12px 14px;border-left:4px solid var(--gold);background:var(--bg);border-radius:4px;white-space:pre-wrap;overflow-wrap:anywhere}
 .confirm-actions{display:flex;justify-content:flex-end;gap:10px;flex-wrap:wrap}
 .settings-warning{padding:10px 12px;border-left:4px solid var(--gold);background:rgba(232,163,23,.12);border-radius:4px}
+@media(max-width:640px){.gallery-thumbnails{gap:10px}.gallery-thumbnails figure,.gallery-submit{flex-basis:50%}.gallery-thumbnails img{aspect-ratio:4/3}}
 .important-admin-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}
 .important-image-remove{display:flex;align-items:center;gap:8px;margin:8px 0}
 .important-image-remove input{width:auto}
@@ -139,18 +140,21 @@ footer{background:#12264a;color:#b6c5e3;padding:26px 0;text-align:center;font-si
 .bar i{display:block;height:100%;width:0;background:var(--gold);transition:width 1s linear}
 .gate-foot .btn{width:100%}
 .btn:disabled{opacity:.55;cursor:not-allowed;filter:none}
-/* v3: compact photo strip + compact messages */
-.strip{position:relative}
-.gallery{display:flex;columns:auto;gap:10px;overflow-x:auto;scroll-snap-type:x mandatory;scrollbar-width:none;-webkit-overflow-scrolling:touch;padding-bottom:2px}
-.gallery::-webkit-scrollbar{display:none}
-.gallery figure{flex:0 0 calc(39.0625% - 11.71875px);scroll-snap-align:start;margin:0;break-inside:auto;min-width:0}
+/* Heart-ranked Campus Moments: featured photo first, remaining photos below. */
+.gallery{display:block}
+.gallery figure{min-width:0}
+.gallery figure.featured img{aspect-ratio:auto;max-height:none;object-fit:contain}
 .gallery img{width:100%;height:auto;aspect-ratio:1/1;object-fit:cover;cursor:zoom-in;background:#0b1424}
 .gallery figcaption{padding:5px 6px;font-size:.78rem}
-.gallery .empty{flex:1}
+.gallery .empty{margin-bottom:14px}
+.gallery-thumbnails{display:flex;gap:14px;overflow-x:auto;scrollbar-width:thin;padding:14px 0 4px}
+.gallery-thumbnails figure{flex:0 0 50%;margin:0}
+.gallery-thumbnails img{aspect-ratio:16/8}
+.gallery-submit{display:flex;flex:0 0 50%;min-height:110px;flex-direction:column;align-items:center;justify-content:center;gap:4px;padding:12px;border:2px dashed var(--line);border-radius:var(--radius);background:var(--card);color:var(--ink2);font:700 .95rem "Source Sans 3",sans-serif;cursor:pointer}
+.gallery-submit:hover{border-color:var(--gold);color:var(--ink)}
+.gallery-submit span:first-child{font-size:2.5rem;line-height:1;color:var(--gold-d)}
+.gallery figure.featured .rx{top:10px;right:10px}
 .stamp{flex-direction:row;gap:5px;flex-wrap:wrap;margin:0;color:var(--ink2);font-size:.78rem}
-.arrow{position:absolute;top:calc(50% - 20px);z-index:5;width:36px;height:36px;border-radius:50%;border:0;background:#12264a;color:#fff;font-size:1.5rem;line-height:1;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,.35)}
-.arrow.prev{left:-8px}.arrow.next{right:-8px}
-.arrow[hidden]{display:none}
 .lightbox{flex-direction:column}
 .lb-fig{margin:0;max-width:100%;text-align:center;cursor:default}
 .lb-fig img{max-width:100%;max-height:78vh;border-radius:8px;display:block;margin:0 auto}
