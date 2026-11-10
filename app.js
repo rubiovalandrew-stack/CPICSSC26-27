@@ -241,6 +241,10 @@ function openGate(announcements) {
   body.addEventListener("wheel", e => {
     if (e.deltaY > 0 && atEnd()) startTimer();
   });
+  // If everything already fits on screen there is nothing to scroll, so start the timer right away.
+  const checkStart = () => { if (!reachedBottom && atEnd()) startTimer(); };
+  body.addEventListener("load", checkStart, true);   // re-check as images finish loading
+  setTimeout(checkStart, 400);
   btn.onclick = () => {
     clearInterval(timer);
     announcements.forEach(n => markRead(n.id));
