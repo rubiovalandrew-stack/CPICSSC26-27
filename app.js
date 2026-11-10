@@ -1,11 +1,12 @@
 /* SSC School Site – Firebase version (Firestore + Authentication) */
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-import { getFirestore, collection, addDoc, deleteDoc, updateDoc, doc, query, where, orderBy, onSnapshot, Timestamp, increment } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+import { initializeFirestore, limit, collection, addDoc, deleteDoc, updateDoc, setDoc, doc, query, where, orderBy, onSnapshot, Timestamp, increment } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged, EmailAuthProvider, reauthenticateWithCredential, updateEmail, updatePassword } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 import { firebaseConfig } from "./firebase-config.js";
 
 const app = initializeApp(firebaseConfig);
-const fs = getFirestore(app);
+// Long-polling auto-detect keeps the connection working on networks that reset streaming connections.
+const fs = initializeFirestore(app, { experimentalAutoDetectLongPolling: true });
 const auth = getAuth(app);
 
 const DAY = 864e5;        // photos stay up for 24 hours
@@ -60,22 +61,49 @@ function previewHTML(text, key, expanded) {
   return `<span class="short"${open ? " hidden" : ""}>${esc(p.short)}</span>${p.cut ? `<span class="full"${open ? "" : " hidden"}>${esc(text)}</span><button class="more" type="button" data-more="${esc(key)}" aria-expanded="${open}">${open ? "Show less" : "Show more"}</button>` : ""}`;
 }
 const newsImages = n => Array.isArray(n.images) ? n.images : n.image ? [n.image] : [];
-const newsImageHTML = (n, className = "", loading = "lazy") => {
+const newsImageHTML = (n, className = "", loading = "lazy", carousel = false) => {
   const images = newsImages(n);
-  return images.length ? `<div class="news-image-grid">${images.map((src, index) => `<img${className ? ` class="${className}"` : ""} src="${src}" alt="${esc(n.title || "News image")} (${index + 1} of ${images.length})" loading="${loading}">`).join("")}</div>` : "";
+  if (!images.length) return "";
+  const label = n.title || "News";
+  const imgs = images.map((src, index) => `<img${className ? ` class="${className}"` : ""} src="${src}" alt="${esc(label)} image ${index + 1} of ${images.length}" loading="${loading}">`).join("");
+  if (!carousel) return `<div class="news-image-grid">${imgs}</div>`;
+  // Student view: show the first image; the rest are swiped left/right.
+  const many = images.length > 1;
+  return `<div class="news-carousel"><div class="news-image-grid news-image-carousel" role="region" tabindex="0" aria-label="${esc(label)} images${many ? ". Swipe horizontally to view all " + images.length + " images" : ""}">${imgs}</div>${many ? `<button class="cbtn prev" type="button" data-dir="prev" aria-label="Previous image" hidden>&#8249;</button><button class="cbtn next" type="button" data-dir="next" aria-label="Next image">&#8250;</button><span class="ccount" aria-hidden="true">1 / ${images.length}</span>` : ""}</div>`;
 };
+/* news image carousel: counter + arrows for mouse users */
+function carouselSync(sc) {
+  const wrap = sc.parentElement, count = sc.children.length, step = sc.clientWidth + 10;
+  const i = Math.min(count - 1, Math.max(0, Math.round(sc.scrollLeft / step)));
+  const c = $(".ccount", wrap); if (c) c.textContent = `${i + 1} / ${count}`;
+  const p = $(".cbtn.prev", wrap), nx = $(".cbtn.next", wrap);
+  if (p) p.hidden = i <= 0;
+  if (nx) nx.hidden = i >= count - 1;
+}
+document.addEventListener("scroll", e => { if (e.target.classList && e.target.classList.contains("news-image-carousel")) carouselSync(e.target); }, true);
+document.addEventListener("click", e => {
+  const b = e.target.closest(".cbtn"); if (!b) return;
+  const sc = $(".news-image-carousel", b.parentElement); if (!sc) return;
+  sc.scrollBy({ left: (b.dataset.dir === "next" ? 1 : -1) * (sc.clientWidth + 10), behavior: "smooth" });
+});
 function toast(msg) {
   const t = document.createElement("div");
   t.className = "toast"; t.setAttribute("role", "status"); t.textContent = msg;
   document.body.appendChild(t); setTimeout(() => t.remove(), 2800);
 }
 
-const state = { news: [], images: [], messages: [] };
+const state = { news: [], images: [], messages: [], contact: { qrCodes: [], phoneNumbers: [] } };
 function watch(name, q, render) {
   return onSnapshot(q, snap => {
     state[name] = snap.docs.map(d => ({ id: d.id, ...d.data() }));
     render();
   }, err => { console.error(err); toast("Could not load data. Check your connection."); });
+}
+function watchDocument(name, reference, render) {
+  return onSnapshot(reference, snap => {
+    state[name] = snap.exists() ? snap.data() : { qrCodes: [], phoneNumbers: [] };
+    render();
+  }, err => { console.error(err); toast("Could not load contact details. Check your connection."); });
 }
 
 /* photo date + age counter (like a social post: "Nov 9 · 5h") */
@@ -116,6 +144,56 @@ function updateArrows() {
   $(".arrow.prev").hidden = !more || g.scrollLeft < 4;
   $(".arrow.next").hidden = !more || g.scrollLeft + g.clientWidth >= g.scrollWidth - 4;
 }
+function validPhone(phone) { return /^\+?[\d\s().-]+$/.test(phone); }
+const PLATFORMS = { facebook: "Facebook", instagram: "Instagram", x: "X", other: "Other" };
+// Reads the saved contact doc (also understands the older format of plain strings).
+function contactData(c = state.contact) {
+  const qrCodes = (Array.isArray(c.qrCodes) ? c.qrCodes : []).map((q, i) => typeof q === "string"
+    ? { platform: "facebook", title: `CPIC Facebook page ${i + 1}`, src: q }
+    : { platform: PLATFORMS[q.platform] ? q.platform : "other", title: String(q.title || ""), src: String(q.src || "") }).filter(q => q.src);
+  const phones = Array.isArray(c.phones)
+    ? c.phones.map(p => ({ title: String(p.title || ""), number: String(p.number || "") })).filter(p => p.number)
+    : (Array.isArray(c.phoneNumbers) ? c.phoneNumbers : []).map(n => ({ title: "", number: String(n) }));
+  return { qrCodes, phones };
+}
+const phoneLink = p => validPhone(p.number) ? `<a href="tel:${esc(p.number.replace(/[^\d+]/g, ""))}">${esc(p.number)}</a>` : esc(p.number);
+function openImage(src, alt) {
+  const lb = document.createElement("div"); lb.className = "lightbox";
+  const im = document.createElement("img"); im.src = src; im.alt = alt || ""; lb.appendChild(im);
+  const onKey = ev => { if (ev.key === "Escape") close(); };
+  const close = () => { lb.remove(); document.removeEventListener("keydown", onKey); };
+  lb.addEventListener("click", close); document.addEventListener("keydown", onKey); document.body.appendChild(lb);
+}
+const PHONE_ICON = `<svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path fill="currentColor" d="M6.62 10.79a15.05 15.05 0 0 0 6.59 6.59l2.2-2.2a1 1 0 0 1 1.02-.24c1.12.37 2.33.57 3.57.57a1 1 0 0 1 1 1V20a1 1 0 0 1-1 1A17 17 0 0 1 3 4a1 1 0 0 1 1-1h3.5a1 1 0 0 1 1 1c0 1.25.2 2.45.57 3.57a1 1 0 0 1-.25 1.02l-2.2 2.2z"/></svg>`;
+// Shared layout for the student page and the admin preview: QR codes grouped by platform, then phone cards.
+function contactHTML(admin) {
+  const { qrCodes, phones } = contactData();
+  const groups = Object.keys(PLATFORMS)
+    .map(key => ({ key, items: qrCodes.map((q, i) => ({ ...q, i })).filter(q => q.platform === key) }))
+    .filter(g => g.items.length);
+  const qrHTML = groups.map(g => `<section class="contact-group">
+    <h3 class="contact-heading"><span class="platform ${g.key}">${PLATFORMS[g.key]}</span></h3>
+    <div class="contact-grid">${g.items.map(q => `<div class="contact-card">
+      <img src="${q.src}" alt="${esc(q.title || PLATFORMS[g.key])} QR code" loading="lazy">
+      <div class="contact-title">${esc(q.title)}</div>
+      ${admin ? `<div class="contact-actions"><button class="btn ghost sm" type="button" data-cact="editqr" data-i="${q.i}">Edit title</button><button class="btn danger sm" type="button" data-cact="delqr" data-i="${q.i}">Delete</button></div>` : ""}
+    </div>`).join("")}</div></section>`).join("");
+  const phoneHTML = phones.length ? `<section class="contact-group">
+    <h3 class="contact-heading">Phone numbers</h3>
+    <div class="phone-grid">${phones.map((p, i) => {
+      const inner = `<span class="phone-icon">${PHONE_ICON}</span><span class="phone-text">${p.title ? `<span class="contact-title">${esc(p.title)}</span>` : ""}<span class="phone-num">${esc(p.number)}</span></span>`;
+      if (admin) return `<div class="phone-card">${inner}<div class="contact-actions"><button class="btn ghost sm" type="button" data-cact="editphone" data-i="${i}">Edit</button><button class="btn danger sm" type="button" data-cact="delphone" data-i="${i}">Delete</button></div></div>`;
+      return validPhone(p.number)
+        ? `<a class="phone-card" href="tel:${esc(p.number.replace(/[^\d+]/g, ""))}">${inner}</a>`
+        : `<div class="phone-card">${inner}</div>`;
+    }).join("")}</div></section>` : "";
+  return qrHTML + phoneHTML;
+}
+function renderContact() {
+  const details = $("#contactDetails");
+  if (!details) return;
+  details.innerHTML = contactHTML(false) || `<div class="empty">Contact details will be posted here soon.</div>`;
+}
 
 /* locked "new news" pop-up */
 let gateOpen = false;
@@ -135,7 +213,7 @@ function openGate(announcements) {
     <div class="gate-head"><h2 id="gt">New announcements</h2><span class="meta">${announcements.length} announcement${announcements.length === 1 ? "" : "s"} · ${duration} second${duration === 1 ? "" : "s"} reading time</span></div>
     <div class="gate-body">${announcements.map(n => `<article class="gate-news">
       <div class="meta"><span class="${tagClass(n.source)}">${esc(n.source)}</span>${fmt(n.date)}</div>
-      <h3>${esc(n.title)}</h3>${newsImageHTML(n, "", "eager")}<p>${esc(n.body)}</p>
+      <h3>${esc(n.title)}</h3>${newsImageHTML(n, "", "eager", true)}<p>${esc(n.body)}</p>
     </article>`).join("")}</div>
     <div class="gate-foot"><div class="bar"><i></i></div><button class="btn" disabled></button></div></div>`;
   document.body.appendChild(g);
@@ -180,7 +258,7 @@ function initStudent() {
     $("#news").innerHTML = announcements.length ? announcements.map(n => `
       <article class="news-item" data-id="${n.id}">
         <div class="meta"><span class="${tagClass(n.source)}">${esc(n.source)}</span>${fmt(n.date)}</div>
-        <h3>${esc(n.title)}</h3>${newsImageHTML(n)}<p>${previewHTML(n.body, "news:" + n.id, expandedNews)}</p>
+        <h3>${esc(n.title)}</h3>${newsImageHTML(n, "", "lazy", true)}<p>${previewHTML(n.body, "news:" + n.id, expandedNews)}</p>
         <div class="react">${rxBtn("n", n.id, "like", n.likes, v["n:" + n.id] === "like")}${rxBtn("n", n.id, "dislike", n.dislikes, v["n:" + n.id] === "dislike")}</div>
       </article>`).join("") : `<div class="empty">Nothing posted yet. Check back soon.</div>`;
   };
@@ -191,12 +269,18 @@ function initStudent() {
     $("#bulletinFilters").querySelectorAll("[data-bulletin-view]").forEach(item => {
       item.setAttribute("aria-pressed", item === button);
     });
-    renderNews();
+    subscribeNews();
   });
-  watch("news", query(collection(fs, "news"), orderBy("date", "desc")), () => {
-    renderNews();
-    checkGate();
-  });
+  // "Recent" only downloads the 3 newest posts; "All" downloads the full list.
+  let newsUnsub = null;
+  function subscribeNews() {
+    if (newsUnsub) newsUnsub();
+    const q = bulletinView === "recent"
+      ? query(collection(fs, "news"), orderBy("date", "desc"), limit(3))
+      : query(collection(fs, "news"), orderBy("date", "desc"));
+    newsUnsub = watch("news", q, () => { renderNews(); checkGate(); });
+  }
+  subscribeNews();
   $("#news").addEventListener("click", e => {
     const newsImage = e.target.closest(".news-image-grid img");
     if (newsImage) {
@@ -227,6 +311,9 @@ function initStudent() {
     if (news) article.querySelector("p").innerHTML = previewHTML(news.body, key, expandedNews);
   });
   watch("images", query(collection(fs, "images"), orderBy("date", "desc")), renderGallery);
+  watchDocument("contact", doc(fs, "siteContent", "contact"), renderContact);
+  renderContact();
+  $("#contactDetails").addEventListener("click", e => { const im = e.target.closest(".contact-card img"); if (im) openImage(im.src, im.alt); });
 
   const expanded = new Set();
   let messageFilter = "recent";
@@ -325,7 +412,8 @@ function initAdmin() {
     unsubs.push(
       watch("news", query(collection(fs, "news"), orderBy("date", "desc")), renderAdmin),
       watch("images", query(collection(fs, "images"), orderBy("date", "desc")), () => { purge(); renderAdmin(); }),
-      watch("messages", collection(fs, "messages"), renderAdmin)
+      watch("messages", collection(fs, "messages"), renderAdmin),
+      watchDocument("contact", doc(fs, "siteContent", "contact"), renderContactAdmin)
     );
   });
 
@@ -454,7 +542,7 @@ function initAdmin() {
     try {
       const files = [...$("#nimg").files];
       if (files.length > 5) return toast("Choose no more than 5 images for one news post.");
-      const images = await Promise.all(files.map(file => compress(file, 1000, 120000)));
+      const images = await Promise.all(files.map(file => compress(file, 800, 70000)));
       const news = { source: $("#source").value, title: $("#ntitle").value.trim(), body: $("#nbody").value.trim(), images, date: Date.now() };
       if (new TextEncoder().encode(JSON.stringify(news)).length > 950000) {
         return toast("The news text or selected images are too large. Shorten the details or use smaller images.");
@@ -477,6 +565,59 @@ function initAdmin() {
       await addDoc(collection(fs, "images"), { src, caption: $("#caption").value.trim(), date: now, expireAt: Timestamp.fromMillis(now + DAY) });
       e.target.reset(); toast("Posted. It will stay up for 24 hours.");
     } catch (err) { console.error(err); toast("Could not post that image."); }
+  });
+
+  async function saveContact(next) {
+    if (new TextEncoder().encode(JSON.stringify(next)).length > 950000) throw new Error("contact-too-large");
+    await setDoc(doc(fs, "siteContent", "contact"), next);
+    state.contact = next; renderContactAdmin();
+  }
+  const contactErr = err => { console.error(err); toast(err.message === "contact-too-large" ? "Too many or too large QR images. Delete one or use smaller images." : "Could not save contact details. Check the image and that you are logged in."); };
+
+  $("#qrForm").addEventListener("submit", async e => {
+    e.preventDefault();
+    const f = $("#qrFile").files[0], title = $("#qrTitle").value.trim();
+    if (!f) return toast("Choose a QR code image first.");
+    if (!title) return toast("Enter a title for this QR code.");
+    const button = $("#saveQr"); button.disabled = true;
+    try {
+      const { qrCodes, phones } = contactData();
+      const src = await compress(f, 1200, 150000);
+      await saveContact({ qrCodes: [...qrCodes, { platform: $("#qrPlatform").value, title, src }], phones });
+      e.target.reset(); toast("QR code added.");
+    } catch (err) { contactErr(err); } finally { button.disabled = false; }
+  });
+
+  $("#phoneForm").addEventListener("submit", async e => {
+    e.preventDefault();
+    const title = $("#phoneTitle").value.trim(), number = $("#phoneNumber").value.trim();
+    if (!title || !number) return toast("Enter a title and a phone number.");
+    if (!validPhone(number)) return toast("Use digits and optional +, spaces, parentheses, periods, or hyphens.");
+    const button = $("#savePhone"); button.disabled = true;
+    try {
+      const { qrCodes, phones } = contactData();
+      await saveContact({ qrCodes, phones: [...phones, { title, number }] });
+      e.target.reset(); toast("Phone number added.");
+    } catch (err) { contactErr(err); } finally { button.disabled = false; }
+  });
+
+  $("#contactPreview").addEventListener("click", async e => {
+    const b = e.target.closest("[data-cact]"); if (!b) return;
+    const i = +b.dataset.i, act = b.dataset.cact, { qrCodes, phones } = contactData();
+    try {
+      if (act === "delqr") { if (!confirm("Delete this QR code?")) return; qrCodes.splice(i, 1); }
+      else if (act === "delphone") { if (!confirm("Delete this phone number?")) return; phones.splice(i, 1); }
+      else if (act === "editqr") {
+        const t = prompt("QR code title", qrCodes[i].title); if (t === null || !t.trim()) return;
+        qrCodes[i].title = t.trim();
+      } else if (act === "editphone") {
+        const t = prompt("Title", phones[i].title); if (t === null || !t.trim()) return;
+        const n = prompt("Phone number", phones[i].number); if (n === null || !n.trim()) return;
+        if (!validPhone(n.trim())) return toast("Use digits and optional +, spaces, parentheses, periods, or hyphens.");
+        phones[i] = { title: t.trim(), number: n.trim() };
+      } else return;
+      await saveContact({ qrCodes, phones }); toast("Saved.");
+    } catch (err) { contactErr(err); }
   });
 
   dash.addEventListener("click", async e => {
@@ -587,6 +728,10 @@ function renderAdmin() {
       <button class="btn danger sm" data-act="delmsg" data-id="${m.id}">Delete</button></div></div>`;
   $("#postedMsgList").innerHTML = posted.length ? posted.map(messageHTML).join("") : `<div class="empty">No messages have been posted.</div>`;
   $("#unpostedMsgList").innerHTML = unposted.length ? unposted.map(messageHTML).join("") : `<div class="empty">No pending or rejected messages.</div>`;
+}
+
+function renderContactAdmin() {
+  $("#contactPreview").innerHTML = contactHTML(true) || `<div class="empty">No contact details have been saved.</div>`;
 }
 
 if (page === "student") initStudent();

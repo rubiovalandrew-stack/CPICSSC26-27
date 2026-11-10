@@ -35,6 +35,7 @@
       <button role="tab" aria-selected="true" data-tab="tMsg">Messages <span class="badge hidden" id="pendBadge">0</span></button>
       <button role="tab" aria-selected="false" data-tab="tNews">News</button>
       <button role="tab" aria-selected="false" data-tab="tImg">Images</button>
+      <button role="tab" aria-selected="false" data-tab="tContact">Contact us</button>
     </div>
 
     <div class="tabpane" id="tMsg">
@@ -98,6 +99,33 @@
         </form>
         <div><h2>Posted images</h2>
           <div id="imgList"></div></div>
+      </div>
+    </div>
+
+    <div class="tabpane hidden" id="tContact">
+      <div class="admin-grid two">
+        <div class="contact-admin-forms">
+          <form class="panel" id="qrForm">
+            <h2>Add a QR code</h2>
+            <p class="meta">Each QR code gets its own title, like "CPIC Official Page".</p>
+            <label for="qrPlatform">Platform</label>
+            <select id="qrPlatform"><option value="facebook">Facebook</option><option value="instagram">Instagram</option><option value="x">X</option><option value="other">Other</option></select>
+            <label for="qrTitle">Title</label>
+            <input type="text" id="qrTitle" maxlength="60" required placeholder="e.g. CPIC Official Page">
+            <label for="qrFile">QR code image</label>
+            <input type="file" id="qrFile" accept="image/*" required style="margin-bottom:14px">
+            <button class="btn" type="submit" id="saveQr">Add QR code</button>
+          </form>
+          <form class="panel" id="phoneForm">
+            <h2>Add a phone number</h2>
+            <label for="phoneTitle">Title</label>
+            <input type="text" id="phoneTitle" maxlength="60" required placeholder="e.g. Registrar's Office">
+            <label for="phoneNumber">Phone number</label>
+            <input type="text" id="phoneNumber" maxlength="30" required inputmode="tel" placeholder="+63 912 345 6789">
+            <button class="btn" type="submit" id="savePhone" style="margin-top:14px">Add phone number</button>
+          </form>
+        </div>
+        <div><h2>Current contact details</h2><div id="contactPreview"></div></div>
       </div>
     </div>
   </main>
