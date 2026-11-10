@@ -37,6 +37,11 @@ service cloud.firestore {
       allow create, update, delete: if isAdmin();
     }
 
+    match /siteContent/importantAnnouncement {
+      allow read: if true;
+      allow create, update, delete: if isAdmin();
+    }
+
     match /messages/{id} {
       allow read: if resource.data.status == 'approved' || isAdmin();
       allow create: if request.resource.data.keys().hasOnly(['text','status','date'])
@@ -47,6 +52,18 @@ service cloud.firestore {
       allow update: if isAdmin()
                     || (resource.data.status == 'approved' && onlyReacting(['likes','dislikes']));
       allow delete: if isAdmin();
+    }
+
+    match /comments/{id} {
+      allow read: if resource.data.status == 'approved' || isAdmin();
+      allow create: if request.resource.data.keys().hasOnly(['messageId','text','status','date'])
+                    && request.resource.data.messageId is string
+                    && get(/databases/$(database)/documents/messages/$(request.resource.data.messageId)).data.status == 'approved'
+                    && request.resource.data.status == 'pending'
+                    && request.resource.data.text is string
+                    && request.resource.data.text.size() >= 2
+                    && request.resource.data.text.size() <= 500;
+      allow update, delete: if isAdmin();
     }
   }
 }

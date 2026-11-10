@@ -20,8 +20,10 @@
   <a class="btn" href="#send">Send an anonymous message</a>
 </div></div>
 
+<section class="important-banner hidden" id="importantAnnouncementBanner" aria-label="Important announcement" aria-live="polite"></section>
+
 <section class="block"><div class="wrap">
-  <h2 id="news-h">Campus Bulletin</h2><p class="sub">Announcements from the admin and the CPIC Supreme Student Council, newest first.</p>
+  <h2 id="news-h">Campus Bulletin</h2><p class="sub">Announcements from the admin and the CPIC Supreme Student Council, newest first. Each one stays up for 24 hours.</p>
   <div class="message-filters" id="bulletinFilters" role="group" aria-label="Choose how many announcements to show">
     <button type="button" data-bulletin-view="recent" aria-pressed="true">Recent</button>
     <button type="button" data-bulletin-view="all" aria-pressed="false">All</button>
@@ -36,7 +38,7 @@
 
 
 <section class="block" id="messages"><div class="wrap">
-  <h2>Student messages</h2><p class="sub">Anonymous messages the admin has approved.</p>
+  <h2>Student messages</h2><p class="sub">Anonymous messages the admin has approved. Each one stays up for 24 hours after it is posted.</p>
   <div class="message-filters" role="group" aria-label="Filter student messages">
     <button type="button" data-filter="all" aria-pressed="false">All</button>
     <button type="button" data-filter="recent" aria-pressed="true">Latest</button>
@@ -46,7 +48,18 @@
   <div class="wall" id="wall"></div>
 </div></section>
 
-
+<dialog class="confirm-dialog" id="commentDialog" aria-labelledby="commentDialogTitle">
+  <form class="confirm-dialog-body" id="commentForm">
+    <h2 id="commentDialogTitle">Comment anonymously</h2>
+    <p class="settings-warning">Your comment will be reviewed by an admin and will only appear if approved.</p>
+    <label for="commentText">Your comment</label>
+    <textarea id="commentText" maxlength="500" required placeholder="Write your comment here"></textarea>
+    <div class="confirm-actions">
+      <button class="btn ghost" type="button" id="cancelComment">Cancel</button>
+      <button class="btn" type="submit" id="submitComment">Submit for approval</button>
+    </div>
+  </form>
+</dialog>
 
 <section class="block" id="send"><div class="wrap">
   <h2>Send an anonymous message</h2>

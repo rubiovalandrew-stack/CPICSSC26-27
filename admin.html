@@ -32,18 +32,19 @@
 
   <main class="wrap">
     <div class="tabs" role="tablist">
-      <button role="tab" aria-selected="true" data-tab="tMsg">Messages <span class="badge hidden" id="pendBadge">0</span></button>
+      <button role="tab" aria-selected="true" data-tab="tMsg">Messages</button>
       <button role="tab" aria-selected="false" data-tab="tNews">News</button>
+      <button role="tab" aria-selected="false" data-tab="tImportant">Important announcement</button>
       <button role="tab" aria-selected="false" data-tab="tImg">Images</button>
       <button role="tab" aria-selected="false" data-tab="tContact">Contact us</button>
     </div>
 
     <div class="tabpane" id="tMsg">
       <h2>Anonymous messages</h2>
-      <p class="sub">Posted messages appear on the student page. Pending and rejected messages are not visible to students.</p>
+      <p class="sub">Posted messages appear on the student page and are deleted automatically 24 hours after they are posted. Pending and rejected messages are not visible to students.</p>
       <div class="admin-message-views" role="group" aria-label="Choose which messages to show">
         <button type="button" data-message-view="posted" aria-pressed="true">Posted</button>
-        <button type="button" data-message-view="unposted" aria-pressed="false">Not posted</button>
+        <button type="button" data-message-view="unposted" aria-pressed="false">Not posted <span class="badge hidden" id="pendBadge">0</span></button>
       </div>
       <div class="admin-message-filters" role="group" aria-label="Sort posted messages">
         <button type="button" data-admin-filter="latest" aria-pressed="false">Latest</button>
@@ -59,12 +60,18 @@
         <h3>Not posted <span class="meta">(pending or rejected)</span></h3>
         <div id="unpostedMsgList"></div>
       </section>
+      <section class="admin-message-section" id="messageComments">
+        <h3>Comments <span class="badge hidden" id="commentPendBadge">0</span></h3>
+        <p class="sub">Comments remain hidden from students until approved.</p>
+        <div id="commentAdminList"></div>
+      </section>
     </div>
 
     <div class="tabpane hidden" id="tNews">
       <div class="admin-grid two">
         <form class="panel" id="newsForm">
           <h2>Post news</h2>
+          <p class="meta">News is deleted automatically 24 hours after posting.</p>
           <label for="source">Posted by</label>
           <select id="source"><option>Admin</option><option>SSC</option></select>
           <label for="ntitle">Title</label>
@@ -83,6 +90,36 @@
             <button type="button" data-content-sort="latest" aria-pressed="true">Latest</button>
           </div>
           <div id="newsList"></div></div>
+      </div>
+    </div>
+
+    <div class="tabpane hidden" id="tImportant">
+      <div class="admin-grid two">
+        <form class="panel" id="importantAnnouncementForm">
+          <h2 id="importantFormTitle">IMPORTANT ANNOUNCEMENT</h2>
+          <p class="sub">Publishing displays a locked pop-up on the student page for the duration you choose. After the timer ends, the announcement stays above the Campus Bulletin as a tappable card, and students can tap it to read it again (without a timer). It stays until you delete it. To change the current announcement, press Edit next to it. Saving edits restarts the lock timer.</p>
+          <label for="importantTitle">Title</label>
+          <input type="text" id="importantTitle" maxlength="120" required>
+          <label for="importantBody">Announcement</label>
+          <textarea id="importantBody" maxlength="3000" required></textarea>
+          <label for="importantImage">Image (optional)</label>
+          <input type="file" id="importantImage" accept="image/*">
+          <label class="important-image-remove hidden" id="importantImageRemoveLabel" for="removeImportantImage">
+            <input type="checkbox" id="removeImportantImage">
+            Remove the current image
+          </label>
+          <label for="importantDuration">Locked pop-up duration (seconds)</label>
+          <input type="number" id="importantDuration" min="1" max="86400" step="1" value="30" required>
+          <div class="important-admin-actions">
+            <button class="btn" type="submit" id="saveImportantAnnouncement">Publish announcement</button>
+            <button class="btn ghost hidden" type="button" id="cancelImportantEdit">Cancel edit</button>
+            <button class="btn danger hidden" type="button" id="deleteImportantAnnouncement">Delete announcement</button>
+          </div>
+        </form>
+        <section>
+          <h2>Current announcement</h2>
+          <div id="importantAnnouncementPreview" class="empty">No important announcement is published.</div>
+        </section>
       </div>
     </div>
 

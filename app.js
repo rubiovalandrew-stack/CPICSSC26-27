@@ -1,6 +1,6 @@
 /* SSC School Site – Firebase version (Firestore + Authentication) */
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-import { initializeFirestore, limit, collection, addDoc, deleteDoc, updateDoc, setDoc, doc, query, where, orderBy, onSnapshot, Timestamp, increment } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+import { initializeFirestore, limit, collection, addDoc, deleteDoc, deleteField, updateDoc, setDoc, doc, query, where, orderBy, onSnapshot, Timestamp, increment, getDocs } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged, EmailAuthProvider, reauthenticateWithCredential, updateEmail, updatePassword } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 import { firebaseConfig } from "./firebase-config.js";
 
@@ -22,7 +22,9 @@ const fmtTime = t => new Date(t).toLocaleString("en-PH", { month: "short", day: 
 const shortDate = t => new Date(t).toLocaleDateString("en-PH", { month: "short", day: "numeric" });
 const ago = ms => { const m = Math.floor(ms / 60000); return m < 1 ? "Just now" : m < 60 ? m + "m" : Math.floor(m / 60) + "h"; };
 const tagClass = s => (s === "SSC" ? "tag ssc" : "tag");
-const expiry = i => (i.expireAt && i.expireAt.toMillis ? i.expireAt.toMillis() : i.date + DAY);
+// Everything students see (news, photos, approved messages) lives for 24 hours from when it was posted.
+const expiry = i => (i.expireAt && i.expireAt.toMillis ? i.expireAt.toMillis() : (i.postedAt || i.date) + DAY);
+const isLive = i => expiry(i) > Date.now();
 const byDate = (a, b) => b.date - a.date;
 
 /* likes / dislikes (anonymous; each browser remembers its own votes) */
@@ -92,18 +94,25 @@ function toast(msg) {
   document.body.appendChild(t); setTimeout(() => t.remove(), 2800);
 }
 
-const state = { news: [], images: [], messages: [], contact: { qrCodes: [], phoneNumbers: [] } };
+const state = { news: [], images: [], messages: [], comments: [], contact: { qrCodes: [], phoneNumbers: [] }, importantAnnouncement: null };
+const loaded = new Set();
 function watch(name, q, render) {
   return onSnapshot(q, snap => {
     state[name] = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    loaded.add(name);
     render();
   }, err => { console.error(err); toast("Could not load data. Check your connection."); });
 }
-function watchDocument(name, reference, render) {
+function watchDocument(name, reference, render, fallback = { qrCodes: [], phoneNumbers: [] }) {
   return onSnapshot(reference, snap => {
-    state[name] = snap.exists() ? snap.data() : { qrCodes: [], phoneNumbers: [] };
+    state[name] = snap.exists() ? snap.data() : fallback;
     render();
-  }, err => { console.error(err); toast("Could not load contact details. Check your connection."); });
+  }, err => {
+    console.error(err);
+    toast(name === "importantAnnouncement"
+      ? "Could not load the important announcement. Check your connection."
+      : "Could not load contact details. Check your connection.");
+  });
 }
 
 /* photo date + age counter (like a social post: "Nov 9 · 5h") */
@@ -117,14 +126,34 @@ function stamps() {
   return gone;
 }
 const purged = new Set();
-function purge() {   // admin browser deletes photos older than 24h
+function purge() {   // admin browser deletes anything older than 24h (photos, news, posted messages + their comments)
   if (!auth.currentUser) return;
   const n = Date.now();
-  state.images.filter(i => expiry(i) <= n && !purged.has(i.id)).forEach(i => {
-    purged.add(i.id); deleteDoc(doc(fs, "images", i.id)).catch(() => purged.delete(i.id));
+  const drop = (col, id) => {
+    const k = col + ":" + id; if (purged.has(k)) return; purged.add(k);
+    deleteDoc(doc(fs, col, id)).catch(() => purged.delete(k));
+  };
+  state.images.filter(i => expiry(i) <= n).forEach(i => drop("images", i.id));
+  state.news.filter(i => expiry(i) <= n).forEach(i => drop("news", i.id));
+  state.messages.filter(m => m.status === "approved" && expiry(m) <= n).forEach(async m => {
+    const k = "messages:" + m.id; if (purged.has(k)) return; purged.add(k);
+    try {
+      const cs = await getDocs(query(collection(fs, "comments"), where("messageId", "==", m.id)));
+      await Promise.all(cs.docs.map(c => deleteDoc(c.ref)));
+      await deleteDoc(doc(fs, "messages", m.id));
+    } catch (err) { console.error("Could not delete expired message:", err); purged.delete(k); }
   });
+  if (loaded.has("messages") && loaded.has("comments")) {   // comments whose message is already gone
+    const ids = new Set(state.messages.map(m => m.id));
+    state.comments.filter(c => !ids.has(c.messageId)).forEach(c => drop("comments", c.id));
+  }
 }
-setInterval(() => { purge(); if (stamps()) (page === "student" ? renderGallery : renderAdmin)(); }, 30000);
+let refreshStudent = null;
+setInterval(() => {
+  purge();
+  if (page === "student") { if (refreshStudent) refreshStudent(); if (stamps()) renderGallery(); }
+  else if (stamps()) renderAdmin();
+}, 30000);
 
 /* ---------- STUDENT PAGE ---------- */
 function renderGallery() {
@@ -164,6 +193,19 @@ function openImage(src, alt) {
   const close = () => { lb.remove(); document.removeEventListener("keydown", onKey); };
   lb.addEventListener("click", close); document.addEventListener("keydown", onKey); document.body.appendChild(lb);
 }
+const ALERT_ICON = `<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/></svg>`;
+// Lock length in seconds (older announcements were saved in minutes).
+const lockSeconds = a => Number(a.durationSeconds) || (Number(a.durationMinutes) || 0) * 60 || 30;
+const secs = n => `${n} second${n === 1 ? "" : "s"}`;
+// First sentence of the announcement, for the preview card.
+function firstSentence(text) {
+  const t = String(text || "").trim();
+  const line = t.split("\n")[0];
+  const m = line.match(/^.*?[.!?]+["')\]]*(?=\s|$)/);
+  let s = (m ? m[0] : line).trim(), complete = !!m;
+  if (s.length > 220) { s = s.slice(0, 220).replace(/\s+\S*$/, ""); complete = false; }
+  return !complete && s.length < t.length ? s + "…" : s;
+}
 const PHONE_ICON = `<svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path fill="currentColor" d="M6.62 10.79a15.05 15.05 0 0 0 6.59 6.59l2.2-2.2a1 1 0 0 1 1.02-.24c1.12.37 2.33.57 3.57.57a1 1 0 0 1 1 1V20a1 1 0 0 1-1 1A17 17 0 0 1 3 4a1 1 0 0 1 1-1h3.5a1 1 0 0 1 1 1c0 1.25.2 2.45.57 3.57a1 1 0 0 1-.25 1.02l-2.2 2.2z"/></svg>`;
 // Shared layout for the student page and the admin preview: QR codes grouped by platform, then phone cards.
 function contactHTML(admin) {
@@ -197,12 +239,13 @@ function renderContact() {
 
 /* locked "new news" pop-up */
 let gateOpen = false;
+let closeNewsGate = null;
 const readSet = () => { try { return new Set(JSON.parse(localStorage.getItem("ssc_read") || "[]")); } catch (e) { return new Set(); } };
 const markRead = id => { const s = readSet(); s.add(id); try { localStorage.setItem("ssc_read", JSON.stringify([...s])); } catch (e) {} };
 function checkGate() {
-  if (gateOpen) return;
+  if (gateOpen || (state.importantAnnouncement && Number(state.importantAnnouncement.lockUntil) > Date.now())) return;
   const read = readSet(), cutoff = Date.now() - NEW_DAYS * DAY;
-  const unread = state.news.filter(n => !read.has(n.id) && n.date > cutoff);
+  const unread = state.news.filter(n => !read.has(n.id) && n.date > cutoff && isLive(n));
   if (unread.length) openGate(unread);
 }
 function openGate(announcements) {
@@ -219,7 +262,26 @@ function openGate(announcements) {
   document.body.appendChild(g);
   const body = $(".gate-body", g), btn = $(".gate-foot button", g), bar = $(".bar i", g), count = $(".gate-count", g);
   let left = duration, started = false, timer;
+  const waiting = [...g.querySelectorAll("img")].filter(im => !im.complete);
+  let pending = waiting.length;
   const secs = n => `${n} second${n === 1 ? "" : "s"}`;
+  const finish = markAnnouncementsRead => {
+    clearInterval(timer);
+    body.removeEventListener("scroll", check);
+    window.removeEventListener("resize", check);
+    waiting.forEach(im => {
+      im.removeEventListener("load", imageDone);
+      im.removeEventListener("error", imageDone);
+    });
+    g.remove();
+    gateOpen = false;
+    closeNewsGate = null;
+    document.body.style.overflow = document.querySelector(".important-announcement-gate") ? "hidden" : "";
+    if (markAnnouncementsRead) {
+      announcements.forEach(n => markRead(n.id));
+      checkGate();
+    }
+  };
   const update = () => {
     const ok = started && left <= 0;
     btn.disabled = !ok;
@@ -238,29 +300,141 @@ function openGate(announcements) {
     update();
   };
   const check = () => { if (atEnd()) start(); };
+  const imageDone = () => { if (--pending <= 0) check(); };
   body.addEventListener("scroll", check, { passive: true });
   window.addEventListener("resize", check);
   // Wait for the images so a short pop-up isn't treated as "already scrolled" before it grows.
-  const waiting = [...g.querySelectorAll("img")].filter(im => !im.complete);
-  let pending = waiting.length;
-  const imageDone = () => { if (--pending <= 0) check(); };
   if (!pending) requestAnimationFrame(check);
   else waiting.forEach(im => { im.addEventListener("load", imageDone); im.addEventListener("error", imageDone); });
   btn.addEventListener("click", () => {
     if (!started || left > 0) return;
-    clearInterval(timer); window.removeEventListener("resize", check);
-    announcements.forEach(n => markRead(n.id));
-    g.remove(); document.body.style.overflow = ""; gateOpen = false; checkGate();
+    finish(true);
   });
+  closeNewsGate = finish;
   update(); $(".gate-card", g).focus();
 }
 
 function initStudent() {
   const expandedNews = new Set();
   let bulletinView = "recent";
+  let importantGateTimer = null;
+  let activeImportantLockUntil = 0;
+  const importantBanner = $("#importantAnnouncementBanner");
+  const importantCard = (item, foot) => `<article class="important-announcement-card">
+    <header class="important-announcement-head">
+      <span class="important-badge">${ALERT_ICON}Important announcement</span>
+      <h2 id="importantAnnouncementTitle">${esc(item.title || "")}</h2>
+    </header>
+    <div class="important-announcement-content">
+      <p>${esc(item.body || "")}</p>
+      ${item.image ? `<img src="${esc(item.image)}" alt="${esc(item.title || "Important announcement")}">` : ""}
+    </div>
+    <div class="important-announcement-foot">${foot}</div>
+  </article>`;
+  const closeImportantGate = () => {
+    clearInterval(importantGateTimer);
+    importantGateTimer = null;
+    activeImportantLockUntil = 0;
+    const gate = $("#importantAnnouncementGate");
+    if (gate && gate.open) gate.close();
+    if (gate) gate.remove();
+    document.body.style.overflow = gateOpen ? "hidden" : "";
+  };
+  // Tapping the card re-opens the full announcement, with a Close button and no timer.
+  const closeImportantReader = () => {
+    const reader = $("#importantAnnouncementReader");
+    if (reader) { if (reader.open) reader.close(); reader.remove(); }
+    document.body.style.overflow = gateOpen || $("#importantAnnouncementGate") ? "hidden" : "";
+  };
+  const openImportantReader = () => {
+    const item = state.importantAnnouncement;
+    if (!item || $("#importantAnnouncementReader") || $("#importantAnnouncementGate")) return;
+    const reader = document.createElement("dialog");
+    reader.id = "importantAnnouncementReader";
+    reader.className = "important-announcement-gate";
+    reader.setAttribute("aria-labelledby", "importantAnnouncementTitle");
+    reader.innerHTML = importantCard(item, `<button class="btn" type="button" data-close>Close</button>`);
+    reader.addEventListener("click", e => { if (e.target === reader || e.target.closest("[data-close]")) closeImportantReader(); });
+    reader.addEventListener("close", () => { if (reader.isConnected) closeImportantReader(); });   // Escape key
+    document.body.appendChild(reader);
+    reader.showModal();
+    document.body.style.overflow = "hidden";
+    $("[data-close]", reader).focus();
+  };
+  importantBanner.addEventListener("click", e => { if (e.target.closest(".important-banner-inner")) openImportantReader(); });
+  const renderImportantAnnouncement = () => {
+    const announcement = state.importantAnnouncement;
+    if (!announcement) {
+      closeImportantGate();
+      closeImportantReader();
+      importantBanner.classList.add("hidden");
+      importantBanner.innerHTML = "";
+      checkGate();
+      return;
+    }
+
+    const lockUntil = Number(announcement.lockUntil) || 0;
+    if (lockUntil > Date.now()) {
+      // Locked pop-up: cannot be closed until the timer ends.
+      closeImportantReader();
+      importantBanner.classList.add("hidden");
+      importantBanner.innerHTML = "";
+      if (activeImportantLockUntil !== lockUntil || !$("#importantAnnouncementGate")) {
+        closeImportantGate();
+        if (closeNewsGate) closeNewsGate(false);
+        const total = Math.max(1, Math.round((lockUntil - (Number(announcement.publishedAt) || Date.now())) / 1000));
+        const percentLeft = () => Math.min(100, Math.max(0, (lockUntil - Date.now()) / 10 / total));
+        const gate = document.createElement("dialog");
+        gate.id = "importantAnnouncementGate";
+        gate.className = "important-announcement-gate";
+        gate.setAttribute("aria-labelledby", "importantAnnouncementTitle");
+        gate.innerHTML = importantCard(announcement, `<div class="gate-count" id="importantAnnouncementCountdown" role="timer"></div><div class="bar"><i id="importantAnnouncementBar" style="width:${percentLeft()}%"></i></div>`);
+        gate.addEventListener("cancel", event => event.preventDefault());
+        document.body.appendChild(gate);
+        gate.showModal();
+        activeImportantLockUntil = lockUntil;
+        document.body.style.overflow = "hidden";
+        const updateCountdown = () => {
+          const remaining = Math.max(0, Math.ceil((lockUntil - Date.now()) / 1000));
+          $("#importantAnnouncementCountdown").textContent = remaining
+            ? `You can close this in ${secs(remaining)}`
+            : "You can close this now";
+          $("#importantAnnouncementBar").style.width = percentLeft() + "%";
+          if (!remaining) {
+            closeImportantGate();
+            renderImportantAnnouncement();
+          }
+        };
+        importantGateTimer = setInterval(updateCountdown, 1000);
+        updateCountdown();
+      }
+      return;
+    }
+
+    // Timer is over: the announcement sits above the bulletin as a tappable card.
+    closeImportantGate();
+    importantBanner.innerHTML = `<button class="important-banner-inner" type="button" aria-haspopup="dialog">
+      <span class="important-banner-body">
+        <span class="important-banner-main">
+          <span class="important-badge">${ALERT_ICON}Important announcement</span>
+          <span class="important-banner-title">${esc(announcement.title || "")}</span>
+          <span class="important-banner-text">${esc(firstSentence(announcement.body))}</span>
+        </span>
+        ${announcement.image ? `<img class="important-banner-img" src="${esc(announcement.image)}" alt="">` : ""}
+      </span>
+      <span class="important-banner-hint">Tap to read the full announcement</span>
+    </button>`;
+    importantBanner.classList.remove("hidden");
+    checkGate();
+  };
+  watchDocument("importantAnnouncement", doc(fs, "siteContent", "importantAnnouncement"), renderImportantAnnouncement, null);
+  let lastSig = "";
+  const liveSig = () => [...state.news, ...state.messages].filter(isLive).map(i => i.id).join();
   const renderNews = () => {
     const v = votes();
-    const announcements = bulletinView === "recent" ? state.news.slice(0, 3) : state.news;
+    lastSig = liveSig();
+    const live = state.news.filter(isLive);
+    const announcements = bulletinView === "recent" ? live.slice(0, 3) : live;
     $("#news").innerHTML = announcements.length ? announcements.map(n => `
       <article class="news-item" data-id="${n.id}">
         <div class="meta"><span class="${tagClass(n.source)}">${esc(n.source)}</span>${fmt(n.date)}</div>
@@ -325,7 +499,8 @@ function initStudent() {
   let messageFilter = "recent";
   const drawWall = () => {
     const v = votes();
-    let posted = [...state.messages].sort(byDate);
+    lastSig = liveSig();
+    let posted = state.messages.filter(isLive).sort(byDate);
     if (messageFilter === "liked") {
       posted = posted.filter(m => (m.likes || 0) > 0)
         .sort((a, b) => (b.likes || 0) - (a.likes || 0) || b.date - a.date);
@@ -337,18 +512,52 @@ function initStudent() {
     if (messageFilter !== "all") posted = posted.slice(0, 3);
     $("#wall").innerHTML = posted.length ? posted.map(m => {
       const messageKey = "message:" + m.id, replyKey = "reply:" + m.id;
-      return `<div class="note" data-id="${m.id}"><p>${previewHTML(m.text, messageKey, expanded)}</p><div class="meta">Anonymous · ${fmt(m.date)}</div>
+      const comments = state.comments.filter(c => c.messageId === m.id).sort(byDate);
+      return `<div class="note" data-id="${m.id}"><div class="note-msg"><p>${previewHTML(m.text, messageKey, expanded)}</p></div><div class="meta">Anonymous · ${fmt(m.date)}</div>
         ${m.reply ? `<div class="reply"><strong>Admin replied</strong><p>${previewHTML(m.reply, replyKey, expanded)}</p></div>` : ""}
         <div class="react">${rxBtn("m", m.id, "like", m.likes, v["m:" + m.id] === "like")}${rxBtn("m", m.id, "dislike", m.dislikes, v["m:" + m.id] === "dislike")}</div>
+        <section class="note-comments" aria-label="Comments">
+          <h3>Comments (${comments.length})</h3>
+          ${comments.length ? comments.map(c => `<div class="note-comment"><p>${esc(c.text)}</p><div class="meta">Anonymous · ${fmt(c.date)}</div></div>`).join("") : `<div class="meta">No approved comments yet.</div>`}
+          <button class="btn ghost sm comment-button" type="button" data-comment="${m.id}">Comment</button>
+        </section>
       </div>`;
     }).join("") : `<div class="empty">${messageFilter === "liked" ? "No liked messages yet." : messageFilter === "disliked" ? "No disliked messages yet." : "No approved messages yet. Be the first to send one."}</div>`;
   };
   watch("messages", query(collection(fs, "messages"), where("status", "==", "approved")), drawWall);
+  refreshStudent = () => { if (liveSig() !== lastSig) { renderNews(); drawWall(); } };
+  watch("comments", query(collection(fs, "comments"), where("status", "==", "approved")), drawWall);
+  let commentMessageId = "";
   $("#wall").addEventListener("click", e => {
     const rx = e.target.closest(".rx"); if (rx) { react("m", rx.dataset.id, rx.dataset.rx); return; }
+    const comment = e.target.closest("[data-comment]");
+    if (comment) {
+      commentMessageId = comment.dataset.comment;
+      $("#commentText").value = "";
+      $("#commentDialog").showModal();
+      $("#commentText").focus();
+      return;
+    }
     const b = e.target.closest("[data-more]"); if (!b) return;
     expanded.has(b.dataset.more) ? expanded.delete(b.dataset.more) : expanded.add(b.dataset.more);
     drawWall();
+  });
+  $("#cancelComment").addEventListener("click", () => $("#commentDialog").close());
+  $("#commentForm").addEventListener("submit", async e => {
+    e.preventDefault();
+    const text = $("#commentText").value.trim();
+    if (text.length < 2) return toast("Please write a little more.");
+    if (text.length > 500) return toast("Comments can be up to 500 characters.");
+    const button = $("#submitComment");
+    button.disabled = true;
+    try {
+      await addDoc(collection(fs, "comments"), { messageId: commentMessageId, text, status: "pending", date: Date.now() });
+      $("#commentDialog").close();
+      toast("Comment submitted. It will appear if the admin approves it.");
+    } catch (err) {
+      console.error("Could not submit comment:", err);
+      toast("Could not submit your comment. Please try again.");
+    } finally { button.disabled = false; }
   });
   $("#messages .message-filters").addEventListener("click", e => {
     const button = e.target.closest("[data-filter]");
@@ -411,7 +620,7 @@ function initAdmin() {
   const loginBox = $("#loginBox"), dash = $("#dash");
 
   onAuthStateChanged(auth, user => {
-    unsubs.forEach(u => u()); unsubs = [];
+    unsubs.forEach(u => u()); unsubs = []; loaded.clear();
     loginBox.classList.toggle("hidden", !!user);
     dash.classList.toggle("hidden", !user);
     if (!user) return;
@@ -419,7 +628,9 @@ function initAdmin() {
       watch("news", query(collection(fs, "news"), orderBy("date", "desc")), renderAdmin),
       watch("images", query(collection(fs, "images"), orderBy("date", "desc")), () => { purge(); renderAdmin(); }),
       watch("messages", collection(fs, "messages"), renderAdmin),
-      watchDocument("contact", doc(fs, "siteContent", "contact"), renderContactAdmin)
+      watch("comments", collection(fs, "comments"), renderAdmin),
+      watchDocument("contact", doc(fs, "siteContent", "contact"), renderContactAdmin),
+      watchDocument("importantAnnouncement", doc(fs, "siteContent", "importantAnnouncement"), renderImportantAdmin, null)
     );
   });
 
@@ -549,18 +760,74 @@ function initAdmin() {
       const files = [...$("#nimg").files];
       if (files.length > 5) return toast("Choose no more than 5 images for one news post.");
       const images = await Promise.all(files.map(file => compress(file, 800, 70000)));
-      const news = { source: $("#source").value, title: $("#ntitle").value.trim(), body: $("#nbody").value.trim(), images, date: Date.now() };
+      const now = Date.now();
+      const news = { source: $("#source").value, title: $("#ntitle").value.trim(), body: $("#nbody").value.trim(), images, date: now, expireAt: Timestamp.fromMillis(now + DAY) };
       if (new TextEncoder().encode(JSON.stringify(news)).length > 950000) {
         return toast("The news text or selected images are too large. Shorten the details or use smaller images.");
       }
       await addDoc(collection(fs, "news"), news);
-      e.target.reset(); toast("Posted.");
+      e.target.reset(); toast("Posted. It will stay up for 24 hours.");
     } catch (err) {
       console.error(err);
       toast(err.message === "news-image-too-large"
         ? "One of the selected images could not be compressed enough. Choose a smaller image."
         : "Could not post. Check the images and that you are logged in.");
     }
+  });
+
+  $("#importantAnnouncementForm").addEventListener("submit", async e => {
+    e.preventDefault();
+    const title = $("#importantTitle").value.trim();
+    const body = $("#importantBody").value.trim();
+    const durationSeconds = Number($("#importantDuration").value);
+    const imageFile = $("#importantImage").files[0];
+    const removeImage = $("#removeImportantImage").checked;
+    if (!title || !body) return toast("Enter a title and announcement.");
+    if (!Number.isInteger(durationSeconds) || durationSeconds < 1 || durationSeconds > 86400) {
+      return toast("Choose a lock duration from 1 to 86400 seconds.");
+    }
+    const button = $("#saveImportantAnnouncement");
+    button.disabled = true;
+    try {
+      let image = editingImportant && state.importantAnnouncement && state.importantAnnouncement.image || "";
+      if (imageFile) image = await compress(imageFile, 1000, 650000);
+      else if (removeImage) image = "";
+      const now = Date.now();
+      const announcement = {
+        title,
+        body,
+        durationSeconds,
+        publishedAt: now,
+        lockUntil: now + durationSeconds * 1000
+      };
+      if (image) announcement.image = image;
+      if (new TextEncoder().encode(JSON.stringify(announcement)).length > 950000) {
+        return toast("The announcement or image is too large. Shorten the text or use a smaller image.");
+      }
+      await setDoc(doc(fs, "siteContent", "importantAnnouncement"), announcement);
+      editingImportant = false;
+      e.target.reset();
+      toast("Important announcement published. The student-page pop-up timer has started.");
+    } catch (err) {
+      console.error("Could not publish important announcement:", err);
+      toast(err.message === "news-image-too-large"
+        ? "The image could not be compressed enough. Choose a smaller image."
+        : "Could not publish. Check your connection and that you are logged in.");
+    } finally { button.disabled = false; }
+  });
+  $("#importantAnnouncementPreview").addEventListener("click", e => { if (e.target.closest("[data-important-edit]")) startImportantEdit(); });
+  $("#cancelImportantEdit").addEventListener("click", () => { editingImportant = false; renderImportantAdmin(); });
+  $("#deleteImportantAnnouncement").addEventListener("click", async () => {
+    if (!state.importantAnnouncement || !confirm("Delete the important announcement from the student page?")) return;
+    const button = $("#deleteImportantAnnouncement");
+    button.disabled = true;
+    try {
+      await deleteDoc(doc(fs, "siteContent", "importantAnnouncement"));
+      toast("Important announcement deleted.");
+    } catch (err) {
+      console.error("Could not delete important announcement:", err);
+      toast("Could not delete the announcement. Check your connection and that you are logged in.");
+    } finally { button.disabled = false; }
   });
 
   $("#imgForm").addEventListener("submit", async e => {
@@ -635,18 +902,39 @@ function initAdmin() {
       if (act === "savereply") {
         const text = $("#rep-" + id).value.trim(); if (!text) return toast("Write a reply first.");
         const m = state.messages.find(x => x.id === id);
-        if (m && m.status !== "approved" && !confirm("Sending a reply also posts this message on the student page. Continue?")) return;
-        await updateDoc(doc(fs, "messages", id), { reply: text, repliedAt: Date.now(), status: "approved" });
+        const wasPosted = m && m.status === "approved";
+        if (!wasPosted && !confirm("Sending a reply also posts this message on the student page for 24 hours. Continue?")) return;
+        const patch = { reply: text, repliedAt: Date.now() };
+        if (!wasPosted) Object.assign(patch, postFields());
+        await updateDoc(doc(fs, "messages", id), patch);
+        if (!wasPosted) await syncCommentExpiry(id, patch.expireAt);
         openReply.delete(id); return toast("Reply posted.");
       }
       if (act === "delreply") { if (!confirm("Remove your reply?")) return; return await updateDoc(doc(fs, "messages", id), { reply: "" }); }
       if (act.startsWith("del")) {
         if (!confirm("Delete this? This cannot be undone.")) return;
-        const col = act === "delnews" ? "news" : act === "delimg" ? "images" : "messages";
+        const col = act === "delnews" ? "news" : act === "delimg" ? "images" : act === "delcomment" ? "comments" : "messages";
+        if (act === "delmsg") {
+          const comments = await getDocs(query(collection(fs, "comments"), where("messageId", "==", id)));
+          await Promise.all(comments.docs.map(comment => deleteDoc(comment.ref)));
+        }
         return await deleteDoc(doc(fs, col, id));
       }
-      const status = act === "approve" ? "approved" : act === "reject" ? "rejected" : "pending";
-      await updateDoc(doc(fs, "messages", id), { status });
+      if (act === "approvecomment") {
+        // An approved comment disappears together with the message it belongs to.
+        const c = state.comments.find(x => x.id === id), msg = c && state.messages.find(m => m.id === c.messageId);
+        await updateDoc(doc(fs, "comments", id), { status: "approved", expireAt: Timestamp.fromMillis(msg ? expiry(msg) : Date.now() + DAY) });
+        return;
+      }
+      if (act === "rejectcomment") { await updateDoc(doc(fs, "comments", id), { status: "rejected" }); return; }
+      if (act === "approve") {
+        const f = postFields();
+        await updateDoc(doc(fs, "messages", id), f);
+        await syncCommentExpiry(id, f.expireAt);
+        return toast("Posted. It will stay up for 24 hours.");
+      }
+      // Reject / unpost: take it off the 24-hour clock until it is posted again.
+      await updateDoc(doc(fs, "messages", id), { status: act === "reject" ? "rejected" : "pending", postedAt: deleteField(), expireAt: deleteField() });
     } catch (err) { console.error(err); toast("That action failed."); }
   });
 }
@@ -681,18 +969,26 @@ function compress(file, max = 900, maxLength = 900000) {
   });
 }
 
+// Posting a message starts its 24-hour clock.
+const postFields = () => { const now = Date.now(); return { status: "approved", postedAt: now, expireAt: Timestamp.fromMillis(now + DAY) }; };
+async function syncCommentExpiry(messageId, expireAt) {
+  const cs = await getDocs(query(collection(fs, "comments"), where("messageId", "==", messageId)));
+  await Promise.all(cs.docs.filter(c => c.data().status === "approved").map(c => updateDoc(c.ref, { expireAt })));
+}
+
 function adminNewsBody(n) {
   const p = preview(n.body), open = expandedAdminNews.has(n.id);
   return `<p class="admin-news-body"><span class="short"${open ? " hidden" : ""}>${esc(p.short)}</span>${p.cut ? `<span class="full"${open ? "" : " hidden"}>${esc(n.body)}</span><button class="more" type="button" data-news-expand="${n.id}" aria-expanded="${open}">${open ? "See less" : "See more"}</button>` : ""}</p>`;
 }
 
 function renderAdmin() {
+  purge();
   const sortByReactions = (items, filter) => {
     if (filter === "liked") return items.sort((a, b) => (b.likes || 0) - (a.likes || 0) || b.date - a.date);
     if (filter === "disliked") return items.sort((a, b) => (b.dislikes || 0) - (a.dislikes || 0) || b.date - a.date);
     return items.sort(byDate);
   };
-  const sortedNews = sortByReactions([...state.news], adminNewsFilter);
+  const sortedNews = sortByReactions(state.news.filter(isLive), adminNewsFilter);
   const news = adminNewsFilter === "latest" ? sortedNews.slice(0, 3) : sortedNews;
   const now = Date.now();
   const imgs = state.images.filter(i => expiry(i) > now)
@@ -709,7 +1005,7 @@ function renderAdmin() {
     <div class="actions"><button class="btn danger sm" data-act="delimg" data-id="${i.id}">Delete now</button></div></div>`).join("") : `<div class="empty">No photos are up right now.</div>`;
   stamps();
 
-  const msgs = [...state.messages];
+  const msgs = state.messages.filter(m => m.status !== "approved" || isLive(m));
   if (adminMessageFilter === "liked") msgs.sort((a, b) => (b.likes || 0) - (a.likes || 0) || b.date - a.date);
   else if (adminMessageFilter === "disliked") msgs.sort((a, b) => (b.dislikes || 0) - (a.dislikes || 0) || b.date - a.date);
   else if (adminMessageFilter === "recent") {
@@ -720,20 +1016,96 @@ function renderAdmin() {
   const posted = msgs.filter(m => m.status === "approved");
   const unposted = msgs.filter(m => m.status !== "approved");
   $("#pendBadge").textContent = pend; $("#pendBadge").classList.toggle("hidden", !pend);
-  const messageHTML = m => `
-    <div class="row"><div style="flex:1;min-width:0"><span class="status ${m.status}">${m.status.toUpperCase()}</span> <span class="meta">· ${fmt(m.date)} · ${m.likes || 0} likes · ${m.dislikes || 0} dislikes</span><p>${esc(m.text)}</p>
-      ${m.reply ? `<div class="reply"><strong>Your reply</strong><p>${esc(m.reply)}</p></div>` : ""}
-      ${openReply.has(m.id) ? `<textarea id="rep-${m.id}" maxlength="500" placeholder="Write your reply">${esc(m.reply || "")}</textarea>
-        <div class="actions" style="margin-top:8px"><button class="btn ok sm" data-act="savereply" data-id="${m.id}">Send reply</button><button class="btn ghost sm" data-act="cancelreply" data-id="${m.id}">Cancel</button></div>` : ""}
-    </div>
-    <div class="actions">
+  const comments = [...state.comments].sort((a, b) => {
+    const order = { pending: 0, approved: 1, rejected: 2 };
+    return order[a.status] - order[b.status] || b.date - a.date;
+  });
+  const pendingComments = comments.filter(c => c.status === "pending").length;
+  $("#commentPendBadge").textContent = pendingComments;
+  $("#commentPendBadge").classList.toggle("hidden", !pendingComments);
+  const commentsToReview = comments.filter(c => c.status !== "approved");
+  $("#commentAdminList").innerHTML = commentsToReview.length ? commentsToReview.map(c => {
+    const message = state.messages.find(m => m.id === c.messageId);
+    return `<div class="row"><div style="flex:1;min-width:0">
+      <span class="status ${esc(c.status)}">${esc(c.status.toUpperCase())}</span> <span class="meta">· ${fmt(c.date)}</span>
+      <p>${esc(c.text)}</p>
+      <div class="meta">On message: ${esc(message ? preview(message.text).short : "Message no longer available.")}</div>
+    </div><div class="actions">
+      <button class="btn ok sm" data-act="approvecomment" data-id="${c.id}">Approve</button>
+      ${c.status !== "rejected" ? `<button class="btn ghost sm" data-act="rejectcomment" data-id="${c.id}">Reject</button>` : ""}
+      <button class="btn danger sm" data-act="delcomment" data-id="${c.id}">Delete</button>
+    </div></div>`;
+  }).join("") : `<div class="empty">No comments need review.</div>`;
+  const messageHTML = m => {
+    const approvedComments = comments.filter(c => c.messageId === m.id && c.status === "approved");
+    const messageActions = `<div class="actions">
       ${m.status !== "approved" ? `<button class="btn ok sm" data-act="approve" data-id="${m.id}">Post it</button>` : `<button class="btn ghost sm" data-act="pending" data-id="${m.id}">Unpost</button>`}
       <button class="btn sm" data-act="reply" data-id="${m.id}">${m.reply ? "Edit reply" : "Reply"}</button>
       ${m.reply ? `<button class="btn ghost sm" data-act="delreply" data-id="${m.id}">Remove reply</button>` : ""}
       ${m.status !== "rejected" ? `<button class="btn ghost sm" data-act="reject" data-id="${m.id}">Reject</button>` : ""}
-      <button class="btn danger sm" data-act="delmsg" data-id="${m.id}">Delete</button></div></div>`;
+      <button class="btn danger sm" data-act="delmsg" data-id="${m.id}">Delete</button></div>`;
+    return `
+    <div class="row"><div style="flex:1;min-width:0"><span class="status ${m.status}">${m.status.toUpperCase()}</span> <span class="meta">· ${fmt(m.date)} · ${m.likes || 0} likes · ${m.dislikes || 0} dislikes</span><p>${esc(m.text)}</p>
+      ${m.reply ? `<div class="reply"><strong>Your reply</strong><p>${esc(m.reply)}</p></div>` : ""}
+      ${openReply.has(m.id) ? `<textarea id="rep-${m.id}" maxlength="500" placeholder="Write your reply">${esc(m.reply || "")}</textarea>
+        <div class="actions" style="margin-top:8px"><button class="btn ok sm" data-act="savereply" data-id="${m.id}">Send reply</button><button class="btn ghost sm" data-act="cancelreply" data-id="${m.id}">Cancel</button></div>` : ""}
+      ${approvedComments.length ? messageActions : ""}
+      ${approvedComments.length ? `<div class="admin-approved-comments"><strong>Approved comments</strong>${approvedComments.map(c => `
+        <div class="admin-approved-comment"><div><p>${esc(c.text)}</p><span class="meta">Anonymous · ${fmt(c.date)}</span></div>
+          <div class="actions"><button class="btn ghost sm" data-act="rejectcomment" data-id="${c.id}">Unapprove</button><button class="btn danger sm" data-act="delcomment" data-id="${c.id}">Delete</button></div>
+        </div>`).join("")}</div>` : ""}
+    </div>
+    ${approvedComments.length ? "" : messageActions}</div>`;
+  };
   $("#postedMsgList").innerHTML = posted.length ? posted.map(messageHTML).join("") : `<div class="empty">No messages have been posted.</div>`;
   $("#unpostedMsgList").innerHTML = unposted.length ? unposted.map(messageHTML).join("") : `<div class="empty">No pending or rejected messages.</div>`;
+}
+
+// The form is in "edit" mode only after the admin presses Edit on the current announcement.
+let editingImportant = false;
+function syncImportantMode() {
+  const announcement = state.importantAnnouncement;
+  $("#importantFormTitle").textContent = editingImportant ? "Edit announcement" : "IMPORTANT ANNOUNCEMENT";
+  $("#saveImportantAnnouncement").textContent = editingImportant ? "Save edits and restart timer" : "Publish announcement";
+  $("#cancelImportantEdit").classList.toggle("hidden", !editingImportant);
+  $("#deleteImportantAnnouncement").classList.toggle("hidden", !announcement);
+}
+function fillImportantForm(announcement) {
+  $("#importantTitle").value = announcement ? announcement.title || "" : "";
+  $("#importantBody").value = announcement ? announcement.body || "" : "";
+  $("#importantImage").value = "";
+  $("#removeImportantImage").checked = false;
+  $("#importantImageRemoveLabel").classList.toggle("hidden", !(announcement && announcement.image));
+  $("#importantDuration").value = announcement ? String(lockSeconds(announcement)) : "30";
+}
+function startImportantEdit() {
+  const announcement = state.importantAnnouncement;
+  if (!announcement) return;
+  editingImportant = true;
+  fillImportantForm(announcement);
+  syncImportantMode();
+  $("#importantAnnouncementForm").scrollIntoView({ behavior: "smooth", block: "center" });
+  $("#importantTitle").focus({ preventScroll: true });
+}
+function renderImportantAdmin() {
+  const announcement = state.importantAnnouncement;
+  const previewBox = $("#importantAnnouncementPreview");
+  if (!announcement) editingImportant = false;
+  if (!editingImportant) fillImportantForm(null);   // never overwrite what is being edited
+  syncImportantMode();
+  if (!announcement) {
+    previewBox.className = "empty";
+    previewBox.textContent = "No important announcement is published.";
+    return;
+  }
+  const lockUntil = Number(announcement.lockUntil) || 0;
+  previewBox.className = "important-preview";
+  previewBox.innerHTML = `<span class="status approved">PUBLISHED</span>
+    <h3>${esc(announcement.title || "")}</h3>
+    <p>${esc(announcement.body || "")}</p>
+    ${announcement.image ? `<img src="${esc(announcement.image)}" alt="${esc(announcement.title || "Important announcement")}">` : ""}
+    <div class="meta">Lock duration: ${secs(lockSeconds(announcement))} · Lock end: ${fmtTime(lockUntil || Number(announcement.publishedAt) || Date.now())}</div>
+    <div class="important-admin-actions"><button class="btn sm" type="button" data-important-edit>Edit announcement</button></div>`;
 }
 
 function renderContactAdmin() {
