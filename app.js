@@ -12,7 +12,9 @@ const auth = getAuth(app);
 const DAY = 864e5;        // photos stay up for 24 hours
 const LOCK_SECONDS = 15;  // default news pop-up lock duration
 const NEW_DAYS = 7;       // only news newer than this triggers the lock
-const MESSAGE_LIMIT = 1500;
+const MESSAGE_LIMIT = 3000;
+const MESSAGE_GROW_LIMIT = 1000;
+const MAX_IMAGES_PER_COURSE = 6;
 
 /* Campus Moments categories */
 const COURSES = [
@@ -57,6 +59,7 @@ const tagClass = s => (s === "SSC" ? "tag ssc" : "tag");
 // Everything students see (news, photos, approved messages) lives for 24 hours from when it was posted.
 const expiry = i => (i.expireAt && i.expireAt.toMillis ? i.expireAt.toMillis() : (i.postedAt || i.date) + DAY);
 const isLive = i => expiry(i) > Date.now();
+const liveImageCountForCourse = course => state.images.filter(image => image.course === course && isLive(image)).length;
 const byDate = (a, b) => b.date - a.date;
 
 /* likes / dislikes (anonymous; each browser remembers its own votes) */
@@ -315,20 +318,41 @@ function renderOfficers() {
 }
 function validPhone(phone) { return /^\+?[\d\s().-]+$/.test(phone); }
 const PLATFORMS = { facebook: "Facebook", instagram: "Instagram", x: "X", other: "Other" };
+function safeWebLink(value) {
+  const link = String(value || "").trim();
+  if (!link) return "";
+  try {
+    const url = new URL(link);
+    return url.protocol === "http:" || url.protocol === "https:" ? url.href : "";
+  } catch {
+    return "";
+  }
+}
 // Reads the saved contact doc (also understands the older format of plain strings).
 function contactData(c = state.contact) {
   const qrCodes = (Array.isArray(c.qrCodes) ? c.qrCodes : []).map((q, i) => typeof q === "string"
-    ? { platform: "facebook", title: `CPIC Facebook page ${i + 1}`, src: q }
-    : { platform: PLATFORMS[q.platform] ? q.platform : "other", title: String(q.title || ""), src: String(q.src || "") }).filter(q => q.src);
+    ? { platform: "facebook", title: `CPIC Facebook page ${i + 1}`, src: q, link: "" }
+    : { platform: PLATFORMS[q.platform] ? q.platform : "other", title: String(q.title || ""), src: String(q.src || ""), link: safeWebLink(q.link) }).filter(q => q.src);
   const phones = Array.isArray(c.phones)
     ? c.phones.map(p => ({ title: String(p.title || ""), number: String(p.number || "") })).filter(p => p.number)
     : (Array.isArray(c.phoneNumbers) ? c.phoneNumbers : []).map(n => ({ title: "", number: String(n) }));
   return { qrCodes, phones };
 }
 const phoneLink = p => validPhone(p.number) ? `<a href="tel:${esc(p.number.replace(/[^\d+]/g, ""))}">${esc(p.number)}</a>` : esc(p.number);
-function openImage(src, alt) {
+function openImage(src, alt, link = "") {
   const lb = document.createElement("div"); lb.className = "lightbox";
   const im = document.createElement("img"); im.src = src; im.alt = alt || ""; lb.appendChild(im);
+  const href = safeWebLink(link);
+  if (href) {
+    const anchor = document.createElement("a");
+    anchor.className = "lightbox-link";
+    anchor.href = href;
+    anchor.target = "_blank";
+    anchor.rel = "noopener noreferrer";
+    anchor.textContent = "Open destination";
+    anchor.addEventListener("click", ev => ev.stopPropagation());
+    lb.appendChild(anchor);
+  }
   const onKey = ev => { if (ev.key === "Escape") close(); };
   const close = () => { lb.remove(); document.removeEventListener("keydown", onKey); };
   lb.addEventListener("click", close); document.addEventListener("keydown", onKey); document.body.appendChild(lb);
@@ -356,9 +380,9 @@ function contactHTML(admin) {
   const qrHTML = groups.map(g => `<section class="contact-group">
     <h3 class="contact-heading"><span class="platform ${g.key}">${PLATFORMS[g.key]}</span></h3>
     <div class="contact-grid">${g.items.map(q => `<div class="contact-card">
-      <img src="${q.src}" alt="${esc(q.title || PLATFORMS[g.key])} QR code" loading="lazy">
+      <img src="${q.src}" alt="${esc(q.title || PLATFORMS[g.key])} QR code" data-link="${esc(q.link)}" loading="lazy">
       <div class="contact-title">${esc(q.title)}</div>
-      ${admin ? `<div class="contact-actions"><button class="btn ghost sm" type="button" data-cact="editqr" data-i="${q.i}">Edit title</button><button class="btn danger sm" type="button" data-cact="delqr" data-i="${q.i}">Delete</button></div>` : ""}
+      ${admin ? `<div class="contact-actions"><button class="btn ghost sm" type="button" data-cact="editqr" data-i="${q.i}">Edit title</button><button class="btn ghost sm" type="button" data-cact="editlink" data-i="${q.i}">Edit link</button><button class="btn danger sm" type="button" data-cact="delqr" data-i="${q.i}">Delete</button></div>` : ""}
     </div>`).join("")}</div></section>`).join("");
   const phoneHTML = phones.length ? `<section class="contact-group">
     <h3 class="contact-heading">Phone numbers</h3>
@@ -664,7 +688,7 @@ function initStudent() {
   });
   watchDocument("contact", doc(fs, "siteContent", "contact"), renderContact);
   renderContact();
-  $("#contactDetails").addEventListener("click", e => { const im = e.target.closest(".contact-card img"); if (im) openImage(im.src, im.alt); });
+  $("#contactDetails").addEventListener("click", e => { const im = e.target.closest(".contact-card img"); if (im) openImage(im.src, im.alt, im.dataset.link); });
 
   const expanded = new Set();
   let messageFilter = "recent";
@@ -801,7 +825,46 @@ function initStudent() {
   });
 
   const ta = $("#msg"), cnt = $("#count");
-  ta.addEventListener("input", () => cnt.textContent = `${ta.value.length} / ${MESSAGE_LIMIT}`);
+  let messageGrowCap = 0, messageGrowWidth = 0, messageGrowPrefix = "";
+  const messageHeightFor = prefix => {
+    const width = ta.clientWidth;
+    if (messageGrowCap && messageGrowWidth === width && messageGrowPrefix === prefix) return messageGrowCap;
+    const style = getComputedStyle(ta);
+    const probe = ta.cloneNode(false);
+    probe.removeAttribute("id");
+    probe.value = prefix;
+    Object.assign(probe.style, {
+      position: "fixed", left: "-9999px", top: "0", visibility: "hidden",
+      width: style.width, minHeight: style.minHeight, maxHeight: "none", height: "auto",
+      boxSizing: style.boxSizing, padding: style.padding, border: style.border, overflowY: "hidden",
+      font: style.font, lineHeight: style.lineHeight, letterSpacing: style.letterSpacing
+    });
+    document.body.append(probe);
+    messageGrowCap = probe.scrollHeight;
+    probe.remove();
+    messageGrowWidth = width;
+    messageGrowPrefix = prefix;
+    return messageGrowCap;
+  };
+  const resizeMessage = () => {
+    ta.style.height = "auto";
+    const value = ta.value;
+    if (value.length > MESSAGE_GROW_LIMIT) {
+      ta.style.overflowY = "hidden";
+      const maxHeight = messageHeightFor(value.slice(0, MESSAGE_GROW_LIMIT));
+      ta.style.height = `${Math.min(ta.scrollHeight, maxHeight)}px`;
+      ta.style.overflowY = "auto";
+    } else {
+      ta.style.overflowY = "hidden";
+      ta.style.height = `${ta.scrollHeight}px`;
+    }
+  };
+  resizeMessage();
+  window.addEventListener("resize", resizeMessage);
+  ta.addEventListener("input", () => {
+    cnt.textContent = `${ta.value.length} / ${MESSAGE_LIMIT}`;
+    resizeMessage();
+  });
   $("#msgForm").addEventListener("submit", async e => {
     e.preventDefault();
     const text = ta.value.trim();
@@ -817,7 +880,7 @@ function initStudent() {
     button.disabled = true;
     try {
       await addDoc(collection(fs, "messages"), { text, status: "pending", date: Date.now() });
-      ta.value = ""; cnt.textContent = `0 / ${MESSAGE_LIMIT}`;
+      ta.value = ""; cnt.textContent = `0 / ${MESSAGE_LIMIT}`; resizeMessage();
       $("#messageConfirm").close();
       toast("Sent! The admin will review it before it is posted.");
     } catch (err) { console.error(err); toast("Could not send. Please try again."); }
@@ -830,12 +893,20 @@ let unsubs = [];
 const openReply = new Set();
 const expandedAdminNews = new Set();
 const subCourse = new Map();   // course the admin picked for a pending student photo
+const imageCourseLocks = new Set();
 let adminMessageFilter = "recent";
 let adminNewsFilter = "latest";
+let adminImageCourse = "all";
 function initAdmin() {
   const loginBox = $("#loginBox"), dash = $("#dash");
   $("#officerPosition").innerHTML = `<option value="">Choose a position…</option>` + POSITIONS.map(p => `<option value="${p.name}">${p.name}${p.max > 1 ? ` (${p.max} seats)` : ""}</option>`).join("");
   $("#imgCourse").innerHTML = `<option value="">Choose a course…</option>` + COURSES.map(c => `<option value="${c.key}">${esc(c.name)}</option>`).join("");
+  $("#adminImageTabs").addEventListener("click", e => {
+    const chip = e.target.closest("[data-admin-image-course]");
+    if (!chip) return;
+    adminImageCourse = chip.dataset.adminImageCourse;
+    renderAdmin();
+  });
 
   onAuthStateChanged(auth, user => {
     unsubs.forEach(u => u()); unsubs = []; loaded.clear();
@@ -1073,11 +1144,22 @@ function initAdmin() {
     e.preventDefault();
     const f = $("#file").files[0]; if (!f) return toast("Choose an image first.");
     const course = $("#imgCourse").value; if (!COURSE[course]) return toast("Choose a course for this photo.");
+    if (!loaded.has("images")) return toast("Wait for posted photos to finish loading before adding another.");
+    if (imageCourseLocks.has(course)) return toast("A photo is already being posted to this course. Try again shortly.");
+    if (liveImageCountForCourse(course) >= MAX_IMAGES_PER_COURSE)
+      return toast(`${COURSE[course].short} already has 6 active photos. Delete one or wait for one to expire.`);
+    imageCourseLocks.add(course);
+    const button = e.submitter || e.target.querySelector('button[type="submit"]');
+    button.disabled = true;
     try {
       const src = await compress(f, 900), now = Date.now();
-      await addDoc(collection(fs, "images"), { src, caption: $("#caption").value.trim(), course, date: now, expireAt: Timestamp.fromMillis(now + DAY) });
+      const image = { src, caption: $("#caption").value.trim(), course, date: now, expireAt: Timestamp.fromMillis(now + DAY) };
+      const ref = await addDoc(collection(fs, "images"), image);
+      state.images = [...state.images, { ...image, id: ref.id }];
+      renderAdmin();
       e.target.reset(); toast("Posted. It will stay up for 24 hours.");
     } catch (err) { console.error(err); toast("Could not post that image."); }
+    finally { imageCourseLocks.delete(course); button.disabled = false; }
   });
 
   async function saveContact(next) {
@@ -1092,11 +1174,13 @@ function initAdmin() {
     const f = $("#qrFile").files[0], title = $("#qrTitle").value.trim();
     if (!f) return toast("Choose a QR code image first.");
     if (!title) return toast("Enter a title for this QR code.");
+    const linkInput = $("#qrLink").value.trim(), link = safeWebLink(linkInput);
+    if (linkInput && !link) return toast("Enter a valid http:// or https:// destination URL.");
     const button = $("#saveQr"); button.disabled = true;
     try {
       const { qrCodes, phones } = contactData();
       const src = await compress(f, 1200, 150000);
-      await saveContact({ qrCodes: [...qrCodes, { platform: $("#qrPlatform").value, title, src }], phones });
+      await saveContact({ qrCodes: [...qrCodes, { platform: $("#qrPlatform").value, title, src, link }], phones });
       e.target.reset(); toast("QR code added.");
     } catch (err) { contactErr(err); } finally { button.disabled = false; }
   });
@@ -1123,6 +1207,12 @@ function initAdmin() {
       else if (act === "editqr") {
         const t = prompt("QR code title", qrCodes[i].title); if (t === null || !t.trim()) return;
         qrCodes[i].title = t.trim();
+      } else if (act === "editlink") {
+        const value = prompt("QR code destination URL (leave blank to clear)", qrCodes[i].link || "");
+        if (value === null) return;
+        const input = value.trim(), link = safeWebLink(input);
+        if (input && !link) return toast("Enter a valid http:// or https:// destination URL.");
+        qrCodes[i].link = link;
       } else if (act === "editphone") {
         const t = prompt("Title", phones[i].title); if (t === null || !t.trim()) return;
         const n = prompt("Phone number", phones[i].number); if (n === null || !n.trim()) return;
@@ -1156,17 +1246,29 @@ function initAdmin() {
         if (!submission) return toast("That photo submission is no longer available.");
         const course = subCourse.get(id) || submission.course || "";
         if (!COURSE[course]) return toast("Choose a course for this photo before approving it.");
-        const batch = writeBatch(fs), now = Date.now();
-        const imageRef = doc(collection(fs, "images"));
-        batch.set(imageRef, {
-          src: submission.src,
-          caption: submission.caption || "",
-          course,
-          date: now,
-          expireAt: Timestamp.fromMillis(now + DAY)
-        });
-        batch.delete(doc(fs, "imageSubmissions", id));
-        await batch.commit();
+        if (!loaded.has("images")) return toast("Wait for posted photos to finish loading before approving another.");
+        if (imageCourseLocks.has(course)) return toast("A photo is already being posted to this course. Try again shortly.");
+        if (liveImageCountForCourse(course) >= MAX_IMAGES_PER_COURSE)
+          return toast(`${COURSE[course].short} already has 6 active photos. Choose another course or wait for one to expire.`);
+        imageCourseLocks.add(course);
+        try {
+          const batch = writeBatch(fs), now = Date.now();
+          const imageRef = doc(collection(fs, "images"));
+          const image = {
+            src: submission.src,
+            caption: submission.caption || "",
+            course,
+            date: now,
+            expireAt: Timestamp.fromMillis(now + DAY)
+          };
+          batch.set(imageRef, image);
+          batch.delete(doc(fs, "imageSubmissions", id));
+          await batch.commit();
+          state.images = [...state.images, { ...image, id: imageRef.id }];
+          state.imageSubmissions = state.imageSubmissions.filter(item => item.id !== id);
+          subCourse.delete(id);
+          renderAdmin();
+        } finally { imageCourseLocks.delete(course); }
         return toast("Photo approved and published for 24 hours.");
       }
       if (act === "rejectimg") {
@@ -1206,8 +1308,26 @@ function initAdmin() {
     const pending = e.target.closest("[data-subcourse]");
     if (pending) { subCourse.set(pending.dataset.subcourse, pending.value); return; }
     const posted = e.target.closest("[data-imgcourse]"); if (!posted || !COURSE[posted.value]) return;
-    try { await updateDoc(doc(fs, "images", posted.dataset.imgcourse), { course: posted.value }); toast("Course updated."); }
-    catch (err) { console.error(err); toast("Could not change the course."); }
+    const image = state.images.find(item => item.id === posted.dataset.imgcourse);
+    if (!image || posted.value === image.course) return;
+    const nextCourse = posted.value;
+    if (liveImageCountForCourse(nextCourse) >= MAX_IMAGES_PER_COURSE) {
+      posted.value = image.course;
+      return toast(`${COURSE[nextCourse].short} already has 6 active photos.`);
+    }
+    if (imageCourseLocks.has(nextCourse)) {
+      posted.value = image.course;
+      return toast("A photo is already being posted to this course. Try again shortly.");
+    }
+    imageCourseLocks.add(nextCourse);
+    try {
+      await updateDoc(doc(fs, "images", posted.dataset.imgcourse), { course: nextCourse });
+      state.images = state.images.map(item => item.id === image.id ? { ...item, course: nextCourse } : item);
+      renderAdmin(); toast("Course updated.");
+    } catch (err) {
+      console.error(err); posted.value = image.course;
+      toast("Could not change the course.");
+    } finally { imageCourseLocks.delete(nextCourse); }
   });
 
   /* SSC officers */
@@ -1319,16 +1439,27 @@ function renderAdmin() {
   const now = Date.now();
   const imgs = state.images.filter(i => expiry(i) > now)
     .sort((a, b) => (b.likes || 0) - (a.likes || 0) || b.date - a.date);
+  const countForCourse = course => imgs.filter(image => image.course === course).length;
+  $("#adminImageTabs").innerHTML = [
+    `<button class="cat-chip" type="button" role="tab" data-admin-image-course="all" aria-selected="${adminImageCourse === "all"}"><span>All courses</span><b>${imgs.length}</b></button>`,
+    ...COURSES.map(course => `<button class="cat-chip" type="button" role="tab" data-admin-image-course="${course.key}" aria-selected="${adminImageCourse === course.key}"><span>${esc(course.short)}</span><b>${countForCourse(course.key)}</b></button>`)
+  ].join("");
+  $("#adminImageCategory").textContent = adminImageCourse === "all" ? "Photos from every course" : COURSE[adminImageCourse].name;
+  const visibleImgs = adminImageCourse === "all" ? imgs : imgs.filter(image => image.course === adminImageCourse);
   $("#newsList").innerHTML = news.length ? news.map(n => `
     <div class="row"><div style="flex:1;min-width:0"><div class="meta"><span class="${tagClass(n.source)}">${esc(n.source)}</span>${fmt(n.date)} · ${n.likes || 0} likes · ${n.dislikes || 0} dislikes</div>
     <strong>${esc(n.title)}</strong>${newsImageHTML(n, "thumb")}
     ${adminNewsBody(n)}</div>
     <div class="actions"><button class="btn danger sm" data-act="delnews" data-id="${n.id}">Delete</button></div></div>`).join("") : `<div class="empty">No news posted.</div>`;
 
-  $("#imgList").innerHTML = imgs.length ? imgs.map(i => `
-    <div class="row" data-up="${i.date}" data-exp="${expiry(i)}"><div style="display:flex;gap:12px;align-items:center;min-width:0"><img class="thumb" src="${i.src}" alt="">
-    <div style="min-width:0">${esc(i.caption || "(no caption)")}${stampHTML(i)}<div class="meta">${i.likes || 0} likes</div>${courseSelectHTML("data-imgcourse", i.id, i.course, !COURSE[i.course])}</div></div>
-    <div class="actions"><button class="btn danger sm" data-act="delimg" data-id="${i.id}">Delete now</button></div></div>`).join("") : `<div class="empty">No photos are up right now.</div>`;
+  $("#imgList").innerHTML = visibleImgs.length ? visibleImgs.map(i => `
+    <div class="row posted-image-card" data-up="${i.date}" data-exp="${expiry(i)}">
+      <img class="thumb" src="${esc(i.src)}" alt="">
+      <div class="posted-image-info"><strong class="posted-image-caption">${esc(i.caption || "(no caption)")}</strong>${stampHTML(i)}<div class="meta">${i.likes || 0} likes</div></div>
+      <div class="posted-image-controls">${courseSelectHTML("data-imgcourse", i.id, i.course, !COURSE[i.course])}
+        <div class="actions"><button class="btn danger sm" data-act="delimg" data-id="${i.id}">Delete</button></div>
+      </div>
+    </div>`).join("") : `<div class="empty">${adminImageCourse === "all" ? "No photos are up right now." : "No photos are up for this course."}</div>`;
   $("#imageSubmissions").innerHTML = state.imageSubmissions.length ? state.imageSubmissions.map(i => `
     <div class="row"><div style="display:flex;gap:12px;align-items:center;min-width:0"><img class="thumb" src="${esc(i.src)}" alt="Submitted photo preview">
     <div style="min-width:0">${esc(i.caption || "(no caption)")}<div class="meta">${fmt(i.date)} · Pending approval</div>

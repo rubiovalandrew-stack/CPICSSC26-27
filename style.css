@@ -53,13 +53,15 @@ section.block>.wrap>h2{font-size:1.9rem}
 .admin-approved-comment .actions{display:flex;gap:8px;flex-shrink:0;flex-wrap:wrap}
 .panel{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:22px;max-width:620px}
 label{display:block;font-weight:600;margin:12px 0 4px}
-input[type=text],input[type=email],input[type=password],textarea,select{width:100%;padding:10px 12px;border:1.5px solid var(--line);border-radius:8px;font:inherit;background:var(--bg);color:var(--ink)}
+input[type=text],input[type=email],input[type=password],input[type=url],textarea,select{width:100%;padding:10px 12px;border:1.5px solid var(--line);border-radius:8px;font:inherit;background:var(--bg);color:var(--ink)}
 textarea{min-height:120px;resize:vertical}
 .count{font-size:.85rem;color:var(--ink2);text-align:right}
 .empty{color:var(--ink2);padding:22px;border:1.5px dashed var(--line);border-radius:var(--radius);text-align:center}
 .toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:#12264a;color:#fff;padding:12px 20px;border-radius:8px;z-index:50;box-shadow:0 6px 20px rgba(0,0,0,.3)}
 .lightbox{position:fixed;inset:0;background:rgba(5,10,20,.88);display:flex;align-items:center;justify-content:center;z-index:40;padding:20px;cursor:zoom-out}
 .lightbox img{max-width:100%;max-height:100%;border-radius:8px}
+.lightbox-link{margin-top:12px;color:#fff;font-weight:700;text-decoration:underline;text-underline-offset:3px;cursor:pointer}
+.lightbox-link:focus-visible{outline-color:#fff}
 footer{background:#12264a;color:#b6c5e3;padding:26px 0;text-align:center;font-size:.92rem}
 /* admin */
 .login-box{min-height:100vh;display:grid;place-items:center;padding:20px}
@@ -233,26 +235,62 @@ a.phone-card:hover,a.phone-card:focus-visible{border-color:var(--gold)}
 #contactPreview .phone-grid{grid-template-columns:repeat(auto-fill,minmax(220px,1fr))}
 @media(max-width:420px){.contact-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.phone-grid{grid-template-columns:1fr}}
 
+/* Compact admin photo list */
+#imgList{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:10px;align-items:start}
+.posted-image-card{display:grid;grid-template-columns:56px minmax(0,1fr);grid-template-areas:"thumb info" "controls controls";gap:8px;align-items:center;min-width:0;margin:0;padding:9px}
+.posted-image-card .thumb{grid-area:thumb;flex:none;width:56px;height:56px;margin:0}
+.posted-image-info{grid-area:info;display:grid;gap:3px;min-width:0;align-self:stretch}
+.posted-image-caption{display:-webkit-box;overflow:hidden;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow-wrap:anywhere;line-height:1.3}
+.posted-image-controls{grid-area:controls;display:flex;align-items:center;gap:8px;min-width:0}
+.posted-image-controls .course-select{flex:1;min-width:0;margin:0;padding:6px 8px}
+.posted-image-controls .actions{justify-content:flex-end}
+@media(max-width:560px){
+  #imgList{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+  .posted-image-card{grid-template-columns:42px minmax(0,1fr);gap:7px;padding:8px}
+  .posted-image-card .thumb{width:42px;height:42px}
+  .posted-image-controls{gap:5px}
+  .posted-image-controls .course-select{width:0;padding:5px 3px;font-size:.78rem}
+  .posted-image-controls .actions{flex:none}
+  .posted-image-controls .actions .btn{width:auto;padding:5px 7px;font-size:.78rem}
+}
+
 /* v8: centered contact section, taller message box */
 #contact .wrap{text-align:center}
 #contact .sub{margin-left:auto;margin-right:auto}
 #contactDetails .contact-heading{justify-content:center}
-#contactDetails .contact-grid,#contactDetails .phone-grid{display:flex;flex-wrap:wrap;justify-content:center}
-#contactDetails .contact-card{flex:0 0 170px}
+#contactDetails .contact-grid{display:flex;flex-wrap:wrap;justify-content:center;gap:12px}
+#contactDetails .phone-grid{display:flex;flex-wrap:wrap;justify-content:center}
+#contactDetails .contact-card{width:auto;min-width:0;max-width:calc(50% - 6px);flex:0 1 160px;padding:12px}
+#contactDetails .contact-card img{width:116px;max-width:100%;height:116px;aspect-ratio:1;object-fit:contain}
 #contactDetails .phone-card{flex:0 1 270px;text-align:left}
-@media(max-width:420px){#contactDetails .contact-card{flex-basis:calc(50% - 5px)}#contactDetails .phone-card{flex-basis:100%}}
-#msg{min-height:162px}
+@media(max-width:420px){#contactDetails .phone-card{flex-basis:100%}}
+@media(max-width:560px){#contactDetails .contact-card img{width:58px;height:58px;padding:3px}}
+#msg{min-height:162px;resize:none;overflow-y:hidden}
 
-/* v9: tidy student header navigation */
-body[data-page=student] header.top .wrap{justify-content:space-between;align-items:center}
-body[data-page=student] header.top nav{display:flex;flex-wrap:wrap;align-items:center;gap:6px}
-body[data-page=student] header.top nav a{margin:0;padding:7px 14px;border-radius:99px;font-size:.95rem;white-space:nowrap}
-body[data-page=student] header.top nav a:hover,body[data-page=student] header.top nav a:focus-visible{background:rgba(255,255,255,.1);color:var(--gold)}
-@media(max-width:760px){
-  body[data-page=student] header.top .wrap{flex-direction:column;gap:10px;padding:12px 16px}
-  body[data-page=student] header.top .brand{text-align:center;font-size:1.25rem}
-  body[data-page=student] header.top nav{width:100%;justify-content:center}
-  body[data-page=student] header.top nav a{flex:1 1 auto;text-align:center;padding:7px 10px;font-size:.9rem;background:rgba(255,255,255,.08)}
+/* Student site header */
+body[data-page=student] header.top{background:linear-gradient(110deg,#102344,#18345f);border-bottom:1px solid rgba(255,255,255,.12);box-shadow:0 6px 20px rgba(11,25,48,.16)}
+body[data-page=student] header.top .wrap{justify-content:space-between;align-items:center;gap:20px;padding-top:12px;padding-bottom:12px}
+body[data-page=student] header.top .brand{display:flex;align-items:center;gap:12px;flex-shrink:0;font-size:1rem;letter-spacing:0}
+body[data-page=student] header.top .brand span{color:inherit}
+body[data-page=student] header.top .brand-mark{display:grid;place-items:center;width:46px;height:46px;border:1px solid rgba(255,255,255,.38);border-radius:14px;background:linear-gradient(145deg,#f4c653,#e7a317);box-shadow:0 3px 10px rgba(0,0,0,.18);color:#12264a;font-size:.77rem;letter-spacing:.04em}
+body[data-page=student] header.top .brand-name{color:#fff;font-size:1.08rem;letter-spacing:.01em}
+body[data-page=student] header.top nav{display:flex;flex-wrap:wrap;align-items:center;justify-content:flex-end;gap:4px}
+body[data-page=student] header.top nav a{margin:0;padding:8px 11px;border:1px solid transparent;border-radius:9px;color:#dbe6fb;font-size:.93rem;line-height:1.2;text-decoration:none;white-space:nowrap;transition:background .18s ease,color .18s ease,border-color .18s ease}
+body[data-page=student] header.top nav a:hover,body[data-page=student] header.top nav a:focus-visible{background:rgba(255,255,255,.1);color:#fff}
+body[data-page=student] header.top nav a.nav-cta{background:var(--gold);color:#241800;font-weight:700;box-shadow:0 2px 8px rgba(0,0,0,.16)}
+body[data-page=student] header.top nav a.nav-cta:hover,body[data-page=student] header.top nav a.nav-cta:focus-visible{background:#f4bd39;color:#241800}
+@media(max-width:900px){
+  body[data-page=student] header.top .wrap{flex-direction:column;gap:12px;padding-top:14px;padding-bottom:14px}
+  body[data-page=student] header.top nav{justify-content:center}
+}
+@media(max-width:560px){
+  body[data-page=student] header.top .wrap{gap:14px;padding-right:16px;padding-left:16px}
+  body[data-page=student] header.top nav{width:100%;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px}
+  body[data-page=student] header.top nav a,body[data-page=student] header.top nav .nav-btn{display:flex;align-items:center;justify-content:center;min-height:40px;padding:7px 5px;border:1px solid rgba(219,230,251,.16);border-radius:9px;background:rgba(255,255,255,.07);font-size:.87rem;line-height:1.15;text-align:center;white-space:normal}
+  body[data-page=student] header.top nav a.nav-cta{border-color:transparent;background:var(--gold);color:#241800}
+}
+@media(max-width:380px){
+  body[data-page=student] header.top nav{grid-template-columns:repeat(2,minmax(0,1fr))}
 }
 
 /* v10: tidy admin tabs */
@@ -391,10 +429,9 @@ body[data-page=student] header.top nav a:hover,body[data-page=student] header.to
 .plus-icon{font-size:2rem;line-height:1;color:var(--gold-d);font-weight:400}
 .dropzone .plus-icon{display:grid;place-items:center;width:54px;height:54px;border-radius:50%;background:rgba(232,163,23,.18);font-size:2.2rem;padding-bottom:3px}
 
-/* officers: header buttons + pop-up (like the announcement) */
-body[data-page=student] header.top nav .nav-btn{margin:0;padding:7px 14px;border:0;border-radius:99px;background:transparent;color:#dbe6fb;font:600 .95rem "Source Sans 3",sans-serif;white-space:nowrap;cursor:pointer}
-body[data-page=student] header.top nav .nav-btn:hover,body[data-page=student] header.top nav .nav-btn:focus-visible{background:rgba(255,255,255,.1);color:var(--gold)}
-@media(max-width:760px){body[data-page=student] header.top nav .nav-btn{flex:1 1 auto;text-align:center;padding:7px 10px;font-size:.9rem;background:rgba(255,255,255,.08)}}
+/* Officers action in the student navigation */
+body[data-page=student] header.top nav .nav-btn{margin:0;padding:8px 11px;border:1px solid rgba(219,230,251,.28);border-radius:9px;background:transparent;color:#dbe6fb;font:600 .93rem "Source Sans 3",sans-serif;line-height:1.2;white-space:nowrap;cursor:pointer;transition:background .18s ease,color .18s ease,border-color .18s ease}
+body[data-page=student] header.top nav .nav-btn:hover,body[data-page=student] header.top nav .nav-btn:focus-visible{background:rgba(255,255,255,.1);border-color:rgba(219,230,251,.55);color:#fff}
 .hero-actions{display:flex;flex-wrap:wrap;gap:10px}
 .hero .btn.ghost{color:#fff;border-color:rgba(255,255,255,.55)}
 .org-dialog{position:fixed;inset:0;width:100%;height:100%;max-width:none;max-height:none;margin:0;padding:16px;border:0;background:rgba(5,10,20,.94);z-index:100;display:flex;align-items:center;justify-content:center}

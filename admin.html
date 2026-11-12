@@ -137,7 +137,7 @@
       <div class="admin-grid two">
         <form class="panel" id="imgForm">
           <h2>Post a photo</h2>
-          <p class="meta">Photos are removed automatically 24 hours after posting.</p>
+          <p class="meta">Photos expire after 24 hours. Up to 6 active photos can be posted per course.</p>
           <label for="file">Image file</label>
           <input type="file" id="file" accept="image/*" required>
           <label for="imgCourse">Course</label>
@@ -151,6 +151,8 @@
           <p class="meta">Approve a submission to publish it in Campus Moments for 24 hours, or reject it to remove it.</p>
           <div id="imageSubmissions"></div>
           <h2>Posted images</h2>
+          <div class="cat-tabs" id="adminImageTabs" role="tablist" aria-label="Posted images by course"></div>
+          <p class="cat-name" id="adminImageCategory"></p>
           <div id="imgList"></div>
           <h2 style="margin-top:28px">Daily top photos (saved)</h2>
           <p class="meta" id="dailyWinnersNote"></p>
@@ -168,6 +170,9 @@
             <select id="qrPlatform"><option value="facebook">Facebook</option><option value="instagram">Instagram</option><option value="x">X</option><option value="other">Other</option></select>
             <label for="qrTitle">Title</label>
             <input type="text" id="qrTitle" maxlength="60" required placeholder="e.g. CPIC Official Page">
+            <label for="qrLink">Destination URL (optional)</label>
+            <input type="url" id="qrLink" placeholder="https://example.com">
+            <p class="meta">Shown below the QR code when someone opens it.</p>
             <label for="qrFile">QR code image</label>
             <input type="file" id="qrFile" accept="image/*" required style="margin-bottom:14px">
             <button class="btn" type="submit" id="saveQr">Add QR code</button>

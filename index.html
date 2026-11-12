@@ -10,8 +10,11 @@
 </head>
 <body data-page="student">
 <header class="top"><div class="wrap">
-  <a class="brand" href="#">CPIC Supreme Student Council<span>.</span></a>
-  <nav><a href="#news-h">Bulletin</a><a href="#photos">Moments</a><a href="#messages">Messages</a><a href="#send">Send message</a><button type="button" class="nav-btn" id="openOfficers">SSC Officers</button><a href="#contact">Contact us</a></nav>
+  <a class="brand" href="#" aria-label="CPIC Supreme Student Council home">
+    <span class="brand-mark" aria-hidden="true">CPIC</span>
+    <span class="brand-name">Supreme Student Council</span>
+  </a>
+  <nav aria-label="Main navigation"><a href="#news-h">Bulletin</a><a href="#photos">Moments</a><a href="#messages">Messages</a><a class="nav-cta" href="#send">Send message</a><button type="button" class="nav-btn" id="openOfficers">SSC Officers</button><a href="#contact">Contact us</a></nav>
 </div></header>
 
 <div class="hero"><div class="wrap">
@@ -102,8 +105,8 @@
   <p class="sub">We don't ask for your name. The admin reads every message and decides whether it is posted.</p>
   <form class="panel" id="msgForm">
     <label for="msg">Your message</label>
-    <textarea id="msg" maxlength="1500" required placeholder="Write your message here"></textarea>
-    <div class="count" id="count">0 / 1500</div>
+    <textarea id="msg" maxlength="3000" required placeholder="Write your message here"></textarea>
+    <div class="count" id="count">0 / 3000</div>
     <button class="btn" type="submit">Send message</button>
   </form>
   <dialog class="confirm-dialog" id="messageConfirm" aria-labelledby="messageConfirmTitle">
