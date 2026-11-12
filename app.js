@@ -14,6 +14,38 @@ const LOCK_SECONDS = 15;  // default news pop-up lock duration
 const NEW_DAYS = 7;       // only news newer than this triggers the lock
 const MESSAGE_LIMIT = 1500;
 
+/* Campus Moments categories */
+const COURSES = [
+  { key: "crim", short: "Criminology", name: "Bachelor of Science in Criminology" },
+  { key: "cs", short: "Computer Science", name: "Bachelor of Science in Computer Science" },
+  { key: "tourism", short: "Tourism Management", name: "Bachelor of Science in Tourism Management" },
+  { key: "act", short: "Computer Technology", name: "Associate in Computer Technology" },
+  { key: "btvted", short: "Tech-Voc Teacher Ed", name: "Bachelor in Technical Vocational Teacher Education" },
+  { key: "hrs", short: "Hotel & Restaurant", name: "Hotel and Restaurant Services" }
+];
+const COURSE = Object.fromEntries(COURSES.map(c => [c.key, c]));
+// SSC positions: each has its own row (level) in the organizational chart and a seat limit.
+const SOCIALS = { facebook: "Facebook", instagram: "Instagram", x: "X", tiktok: "TikTok", youtube: "YouTube", other: "Other" };
+const socialOf = o => (SOCIALS[o.qrPlatform] ? o.qrPlatform : "other");
+const POSITIONS = [
+  { name: "Advisor", level: 0, max: 2 },
+  { name: "President", level: 1, max: 1 },
+  { name: "Vice-President", level: 2, max: 1 },
+  { name: "Secretary", level: 3, max: 1 },
+  { name: "Treasurer", level: 3, max: 1 },
+  { name: "Auditor", level: 3, max: 1 },
+  { name: "Senator", level: 4, max: 12 }
+];
+const courseSelectHTML = (attr, id, cur, blank) => `<select class="course-select" ${attr}="${id}" aria-label="Course">${blank ? `<option value="">Choose course…</option>` : ""}${COURSES.map(c => `<option value="${c.key}"${c.key === cur ? " selected" : ""}>${esc(c.short)}</option>`).join("")}</select>`;
+// Calendar days / months are counted in Philippine time so every browser agrees.
+const TZ = "Asia/Manila";
+const dayKey = t => new Date(t).toLocaleDateString("en-CA", { timeZone: TZ });   // YYYY-MM-DD
+const monthKey = t => dayKey(t).slice(0, 7);
+const lastDayOf = month => { const [y, m] = month.split("-").map(Number); return new Date(Date.UTC(y, m, 0)).getUTCDate(); };
+const isLastDayOfMonth = t => +dayKey(t).slice(8) === lastDayOf(monthKey(t));
+const monthName = month => { const [y, m] = month.split("-").map(Number); return new Date(Date.UTC(y, m - 1, 1)).toLocaleDateString("en-PH", { month: "long", year: "numeric", timeZone: "UTC" }); };
+const dayLabel = day => new Date(day + "T12:00:00Z").toLocaleDateString("en-PH", { month: "short", day: "numeric", timeZone: "UTC" });
+
 const page = document.body.dataset.page;
 const $ = (s, r = document) => r.querySelector(s);
 const esc = s => String(s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
@@ -95,7 +127,7 @@ function toast(msg) {
 }
 
 const state = {
-  news: [], images: [], imageSubmissions: [], messages: [], comments: [],
+  news: [], images: [], imageSubmissions: [], messages: [], comments: [], dailyBest: [], officers: [],
   contact: { qrCodes: [], phoneNumbers: [] },
   importantAnnouncement: null,
   newsPopupSettings: { lockSeconds: LOCK_SECONDS }
@@ -142,7 +174,10 @@ function purge() {   // admin browser deletes anything older than 24h (photos, n
     const k = col + ":" + id; if (purged.has(k)) return; purged.add(k);
     deleteDoc(doc(fs, col, id)).catch(() => purged.delete(k));
   };
-  state.images.filter(i => expiry(i) <= n).forEach(i => drop("images", i.id));
+  if (loaded.has("dailyBest")) {
+    state.images.filter(i => expiry(i) <= n).forEach(dropImage);
+    state.dailyBest.filter(d => (d.month || "") < monthKey(n)).forEach(d => drop("dailyBest", d.id));   // month already highlighted
+  }
   state.news.filter(i => expiry(i) <= n).forEach(i => drop("news", i.id));
   state.messages.filter(m => m.status === "approved" && expiry(m) <= n).forEach(async m => {
     const k = "messages:" + m.id; if (purged.has(k)) return; purged.add(k);
@@ -157,6 +192,39 @@ function purge() {   // admin browser deletes anything older than 24h (photos, n
     state.comments.filter(c => !ids.has(c.messageId)).forEach(c => drop("comments", c.id));
   }
 }
+// The most-liked photo of each day is saved (smaller) before the 24-hour delete, for the month-end highlight.
+let archiveChain = Promise.resolve();
+async function archiveWinner(i) {
+  const day = dayKey(i.date), month = day.slice(0, 7);
+  if (month !== monthKey(Date.now()) || !(i.likes > 0)) return;
+  const cur = state.dailyBest.find(d => d.id === day);
+  if (cur && (cur.likes || 0) >= i.likes) return;
+  let src = i.src;
+  try { src = await compress(await (await fetch(i.src)).blob(), 700, 120000); }
+  catch (err) { if (String(src).length > 800000) return; }
+  const rec = { day, month, src, caption: i.caption || "", course: i.course || "", likes: i.likes, date: i.date, imageId: i.id };
+  await setDoc(doc(fs, "dailyBest", day), rec);
+  state.dailyBest = [...state.dailyBest.filter(d => d.id !== day), { id: day, ...rec }];
+}
+function dropImage(i) {
+  const k = "images:" + i.id; if (purged.has(k)) return; purged.add(k);
+  archiveChain = archiveChain
+    .then(async () => { await archiveWinner(i); await deleteDoc(doc(fs, "images", i.id)); })
+    .catch(err => { console.error("Could not archive/delete expired photo:", err); purged.delete(k); });
+}
+// Best photo of each day this month (saved winners + photos still up), most likes first.
+function monthWinners(month) {
+  const best = new Map();
+  const consider = r => {
+    const day = r.day || dayKey(r.date);
+    if (!(r.likes > 0) || !day.startsWith(month)) return;
+    const c = best.get(day);
+    if (!c || r.likes > c.likes) best.set(day, { ...r, day });
+  };
+  state.dailyBest.forEach(consider);
+  state.images.forEach(consider);
+  return [...best.values()].sort((a, b) => b.likes - a.likes || (a.day < b.day ? -1 : 1));
+}
 let refreshStudent = null;
 setInterval(() => {
   purge();
@@ -165,22 +233,85 @@ setInterval(() => {
 }, 30000);
 
 /* ---------- STUDENT PAGE ---------- */
+// Course tabs open in a random order on every visit so no course is always first.
+const courseOrder = (() => { const a = COURSES.map(c => c.key); for (let i = a.length - 1; i > 0; i--) { const k = Math.floor(Math.random() * (i + 1)); [a[i], a[k]] = [a[k], a[i]]; } return a; })();
+let galleryCourse = null;
 function renderGallery() {
-  const g = $("#gallery"), v = votes();
-  const n = Date.now(), list = state.images.filter(i => expiry(i) > n)
+  const g = $("#gallery"), v = votes(), n = Date.now();
+  const all = state.images.filter(i => expiry(i) > n)
     .sort((a, b) => (b.likes || 0) - (a.likes || 0) || b.date - a.date);
+  const count = k => all.filter(i => i.course === k).length;
+  if (!galleryCourse && loaded.has("images")) galleryCourse = courseOrder.find(k => count(k) > 0) || courseOrder[0];
+  const active = galleryCourse || courseOrder[0];
+  const tabs = $("#galleryTabs"), keep = tabs.scrollLeft;
+  tabs.innerHTML = [...courseOrder, "all"].map(k => `<button class="cat-chip" type="button" role="tab" data-course="${k}" aria-selected="${k === active}"><span>${k === "all" ? "All courses" : esc(COURSE[k].short)}</span><b>${k === "all" ? all.length : count(k)}</b></button>`).join("");
+  tabs.scrollLeft = keep;
+  $("#galleryCourseName").textContent = active === "all" ? "Photos from every course" : COURSE[active].name;
+  const list = active === "all" ? all : all.filter(i => i.course === active);
+  const tag = i => active === "all" && COURSE[i.course] ? `<span class="course-tag">${esc(COURSE[i.course].short)}</span>` : "";
   const photo = (i, featured = false) => `
     <figure class="${featured ? "featured" : ""}" data-id="${i.id}" data-up="${i.date}" data-exp="${expiry(i)}"><img src="${esc(i.src)}" alt="${esc(i.caption || "School photo")}" loading="lazy">
-    <figcaption>${stampHTML(i)}</figcaption>${rxBtn("i", i.id, "heart", i.likes, v["i:" + i.id] === "like")}</figure>`;
+    <figcaption>${tag(i)}${stampHTML(i)}</figcaption>${rxBtn("i", i.id, "heart", i.likes, v["i:" + i.id] === "like")}</figure>`;
+  const submitTile = `<button class="gallery-submit" type="button" aria-label="Submit a photo for admin approval"><span aria-hidden="true">+</span><span>Share a Campus Moment</span></button>`;
   g.innerHTML = list.length ? `
     ${photo(list[0], true)}
     <div class="gallery-thumbnails">${list.slice(1).map(i => photo(i)).join("")}
-      <button class="gallery-submit" type="button" aria-label="Submit a photo for admin approval"><span aria-hidden="true">+</span><span>Share a Campus Moment</span></button>
-    </div>` : `<div class="empty">No photos right now. New photos appear here for 24 hours.</div>
-      <button class="gallery-submit" type="button" aria-label="Submit a photo for admin approval"><span aria-hidden="true">+</span><span>Share a Campus Moment</span></button>`;
+      ${submitTile}
+    </div>` : `<div class="empty">${active === "all" ? "No photos right now." : "No photos for this course right now."} New photos appear here for 24 hours.</div>
+      ${submitTile}`;
   stamps();
   const lb = $(".lightbox .rx");   // keep an open full-size photo in sync
   if (lb) { const im = state.images.find(x => x.id === lb.dataset.id); if (im) { const on = v["i:" + im.id] === "like"; $("span", lb).textContent = im.likes || 0; lb.classList.toggle("on", on); lb.setAttribute("aria-pressed", on); } }
+  if (page === "student") renderMonthlyBest();
+}
+// Month-end highlight: on the last day of the month, every day's most-liked photo is shown for 24 hours with its likes.
+let highlightUnsub = null, bestShown = [];
+function ensureHighlightWatch() {
+  if (highlightUnsub || !isLastDayOfMonth(Date.now())) return;
+  highlightUnsub = watch("dailyBest", query(collection(fs, "dailyBest"), where("month", "==", monthKey(Date.now()))), renderMonthlyBest);
+}
+function renderMonthlyBest() {
+  const box = $("#monthlyBest"); if (!box) return;
+  const month = monthKey(Date.now());
+  bestShown = isLastDayOfMonth(Date.now()) ? monthWinners(month) : [];
+  if (!bestShown.length) { box.classList.add("hidden"); box.innerHTML = ""; return; }
+  box.classList.remove("hidden");
+  box.innerHTML = `<div class="best-month">
+    <div class="best-head"><span class="best-badge">${ICON.heart}Best of ${esc(monthName(month))}</span>
+      <h3>The month's most-loved Campus Moments</h3>
+      <p class="meta">The top photo from each day this month. On display today only.</p></div>
+    <div class="best-grid">${bestShown.map((w, idx) => `<button class="best-card" type="button" data-best="${idx}">
+      <img src="${esc(w.src)}" alt="${esc(w.caption || "Top photo of " + dayLabel(w.day))}" loading="lazy">
+      <span class="best-likes">${ICON.heart}${w.likes} like${w.likes === 1 ? "" : "s"}</span>
+      <span class="best-info"><strong>${dayLabel(w.day)}</strong>${COURSE[w.course] ? `<span class="course-tag">${esc(COURSE[w.course].short)}</span>` : ""}</span></button>`).join("")}</div></div>`;
+}
+const officerName = o => [o.firstName, o.middleName, o.lastName].filter(Boolean).join(" ");
+const posIndex = o => { const i = POSITIONS.findIndex(p => p.name === o.position); return i < 0 ? 99 : i; };
+const officerLevel = o => { const p = POSITIONS.find(x => x.name === o.position); return p ? p.level : [1, 2, 3, 4].includes(Number(o.level)) ? Number(o.level) : 3; };
+const sortedOfficers = () => [...state.officers].sort((a, b) => officerLevel(a) - officerLevel(b) || posIndex(a) - posIndex(b) || (a.createdAt || 0) - (b.createdAt || 0));
+// Student pop-up: the chart (bigger cards for higher positions) or one officer's profile.
+let officerView = null;
+function renderOfficers() {
+  const box = $("#officerContent"); if (!box) return;
+  const o = officerView && state.officers.find(x => x.id === officerView);
+  if (officerView && !o) officerView = null;
+  $("#officerBack").classList.toggle("hidden", !o);
+  if (o) {
+    box.innerHTML = `<div class="officer-profile">
+      ${o.photo ? `<img class="officer-portrait" src="${esc(o.photo)}" alt="Portrait of ${esc(officerName(o))}">` : ""}
+      <h3 class="officer-name">${esc(officerName(o))}</h3><p class="officer-position">${esc(o.position || "")}</p></div>
+      ${o.bio ? `<h4>About</h4><p class="officer-text">${esc(o.bio)}</p>` : ""}
+      ${o.message ? `<h4>Message to the student body</h4><blockquote class="officer-message">${esc(o.message)}</blockquote>` : ""}
+      ${o.email ? `<p><a href="mailto:${esc(o.email)}">${esc(o.email)}</a></p>` : ""}
+      ${o.qr ? `<h4>Social media</h4><span class="platform ${socialOf(o)}">${socialOf(o) === "other" ? "Social media" : SOCIALS[socialOf(o)]}</span><img class="officer-qr" src="${esc(o.qr)}" alt="Social media QR code of ${esc(officerName(o))}">` : ""}`;
+    box.scrollTop = 0; return;
+  }
+  const keep = box.scrollTop, list = sortedOfficers();
+  if (!list.length) { box.innerHTML = `<div class="empty">The officers will be introduced here soon.</div>`; return; }
+  box.innerHTML = `<div class="org">${[0, 1, 2, 3, 4].filter(l => list.some(x => officerLevel(x) === l)).map(l => (l === 0 ? `<h4 class="org-heading">SSC Advisors</h4>` : "") + `<div class="org-level lvl${l}">${list.filter(x => officerLevel(x) === l).map(x => `<button class="org-card" type="button" data-officer="${x.id}">
+    <span class="org-photo">${x.photo ? `<img src="${esc(x.photo)}" alt="" loading="lazy">` : esc(((x.firstName || "")[0] || "") + ((x.lastName || "")[0] || ""))}</span>
+    <strong>${esc(officerName(x))}</strong><span class="org-role">${esc(x.position || "")}</span></button>`).join("")}</div>`).join("")}</div>`;
+  box.scrollTop = keep;
 }
 function validPhone(phone) { return /^\+?[\d\s().-]+$/.test(phone); }
 const PLATFORMS = { facebook: "Facebook", instagram: "Instagram", x: "X", other: "Other" };
@@ -505,6 +636,32 @@ function initStudent() {
     if (news) article.querySelector("p").innerHTML = previewHTML(news.body, key, expandedNews);
   });
   watch("images", query(collection(fs, "images"), orderBy("date", "desc")), renderGallery);
+  ensureHighlightWatch();
+  watch("officers", query(collection(fs, "officers"), orderBy("createdAt", "asc")), renderOfficers);
+  renderOfficers();
+  $("#galleryTabs").addEventListener("click", e => {
+    const chip = e.target.closest("[data-course]"); if (!chip) return;
+    galleryCourse = chip.dataset.course; renderGallery();
+  });
+  $("#monthlyBest").addEventListener("click", e => {
+    const card = e.target.closest("[data-best]"); const w = card && bestShown[+card.dataset.best]; if (!w) return;
+    const lb = document.createElement("div"); lb.className = "lightbox";
+    lb.innerHTML = `<figure class="lb-fig"><img src="${esc(w.src)}" alt="${esc(w.caption || "Top photo")}"><figcaption>${w.caption ? `<p>${esc(w.caption)}</p>` : ""}<span>${dayLabel(w.day)}${COURSE[w.course] ? " · " + esc(COURSE[w.course].name) : ""} · ♥ ${w.likes} like${w.likes === 1 ? "" : "s"}</span></figcaption></figure>`;
+    const onKey = ev => { if (ev.key === "Escape") close(); };
+    const close = () => { lb.remove(); document.removeEventListener("keydown", onKey); };
+    lb.onclick = close; document.addEventListener("keydown", onKey); document.body.appendChild(lb);
+  });
+  const officerDialog = $("#officerDialog");
+  const openOfficers = () => { officerView = null; renderOfficers(); officerDialog.showModal(); document.body.style.overflow = "hidden"; };
+  $("#openOfficers").addEventListener("click", openOfficers);
+  $("#officerClose").addEventListener("click", () => officerDialog.close());
+  $("#officerBack").addEventListener("click", () => { officerView = null; renderOfficers(); });
+  officerDialog.addEventListener("click", e => { if (e.target === officerDialog) officerDialog.close(); });
+  officerDialog.addEventListener("close", () => { document.body.style.overflow = gateOpen || $("#importantAnnouncementGate") ? "hidden" : ""; });
+  $("#officerContent").addEventListener("click", e => {
+    const card = e.target.closest("[data-officer]"); if (!card) return;
+    officerView = card.dataset.officer; renderOfficers();
+  });
   watchDocument("contact", doc(fs, "siteContent", "contact"), renderContact);
   renderContact();
   $("#contactDetails").addEventListener("click", e => { const im = e.target.closest(".contact-card img"); if (im) openImage(im.src, im.alt); });
@@ -539,7 +696,7 @@ function initStudent() {
     }).join("") : `<div class="empty">${messageFilter === "liked" ? "No liked messages yet." : messageFilter === "disliked" ? "No disliked messages yet." : "No approved messages yet. Be the first to send one."}</div>`;
   };
   watch("messages", query(collection(fs, "messages"), where("status", "==", "approved")), drawWall);
-  refreshStudent = () => { if (liveSig() !== lastSig) { renderNews(); drawWall(); } };
+  refreshStudent = () => { ensureHighlightWatch(); renderMonthlyBest(); if (liveSig() !== lastSig) { renderNews(); drawWall(); } };
   watch("comments", query(collection(fs, "comments"), where("status", "==", "approved")), drawWall);
   let commentMessageId = "";
   $("#wall").addEventListener("click", e => {
@@ -583,7 +740,7 @@ function initStudent() {
 
   const g = $("#gallery");
   g.addEventListener("click", e => {
-    if (e.target.closest(".gallery-submit")) { $("#imageSubmissionDialog").showModal(); return; }
+    if (e.target.closest(".gallery-submit")) { openSubmit(); return; }
     const rx = e.target.closest(".rx"); if (rx) { react("i", rx.dataset.id, "like"); return; }
     const fig = e.target.closest("figure[data-id]"); if (!fig) return;
     const i = state.images.find(x => x.id === fig.dataset.id); if (!i) return;
@@ -596,22 +753,44 @@ function initStudent() {
     lb.onclick = ev => { if (ev.target.closest(".rx")) { react("i", i.id, "like"); return; } close(); };
     document.addEventListener("keydown", onKey); document.body.appendChild(lb);
   });
-  $("#cancelImageSubmission").addEventListener("click", () => $("#imageSubmissionDialog").close());
-  $("#imageSubmissionForm").addEventListener("submit", async e => {
+  // Photo submission form: live preview, course picker, caption counter.
+  const subDialog = $("#imageSubmissionDialog"), subForm = $("#imageSubmissionForm"), subFile = $("#studentImage"), subPreview = $("#studentImagePreview"), subZone = $("#dropzone"), subCaption = $("#studentImageCaption");
+  $("#studentCourse").innerHTML = `<option value="">Choose a course…</option>` + COURSES.map(c => `<option value="${c.key}">${esc(c.name)}</option>`).join("");
+  function showPreview(file) {
+    if (subPreview.dataset.url) URL.revokeObjectURL(subPreview.dataset.url);
+    subPreview.dataset.url = "";
+    if (file) { const u = URL.createObjectURL(file); subPreview.dataset.url = u; subPreview.src = u; }
+    subPreview.hidden = !file; subZone.classList.toggle("has-file", !!file);
+    $(".dz-empty", subZone).hidden = !!file; $(".dz-change", subZone).hidden = !file;
+  }
+  function resetSubmission() { subForm.reset(); showPreview(null); $("#captionCount").textContent = "0 / 100"; }
+  function openSubmit() {
+    resetSubmission();
+    if (galleryCourse && galleryCourse !== "all") $("#studentCourse").value = galleryCourse;
+    subDialog.showModal();
+  }
+  subFile.addEventListener("change", () => showPreview(subFile.files[0] || null));
+  subCaption.addEventListener("input", () => $("#captionCount").textContent = `${subCaption.value.length} / 100`);
+  $("#cancelImageSubmission").addEventListener("click", () => subDialog.close());
+  $("#closeImageSubmission").addEventListener("click", () => subDialog.close());
+  subDialog.addEventListener("click", e => { if (e.target === subDialog) subDialog.close(); });
+  subDialog.addEventListener("close", resetSubmission);
+  subForm.addEventListener("submit", async e => {
     e.preventDefault();
-    const file = $("#studentImage").files[0];
+    const file = subFile.files[0];
     if (!file) return toast("Choose an image first.");
+    const courseValue = $("#studentCourse").value;
+    if (!COURSE[courseValue]) return toast("Pick the course this photo is for.");
     const button = $("#submitImage");
     button.disabled = true;
     try {
       const src = await compress(file, 900);
-      const submission = { src, caption: $("#studentImageCaption").value.trim(), status: "pending", date: Date.now() };
+      const submission = { src, caption: subCaption.value.trim(), course: courseValue, status: "pending", date: Date.now() };
       if (new TextEncoder().encode(JSON.stringify(submission)).length > 950000) {
         return toast("The image is too large to submit. Choose a smaller image.");
       }
       await addDoc(collection(fs, "imageSubmissions"), submission);
-      e.target.reset();
-      $("#imageSubmissionDialog").close();
+      subDialog.close();
       toast("Photo submitted. It will appear if an admin approves it.");
     } catch (err) {
       console.error("Could not submit campus photo:", err);
@@ -650,10 +829,13 @@ function initStudent() {
 let unsubs = [];
 const openReply = new Set();
 const expandedAdminNews = new Set();
+const subCourse = new Map();   // course the admin picked for a pending student photo
 let adminMessageFilter = "recent";
 let adminNewsFilter = "latest";
 function initAdmin() {
   const loginBox = $("#loginBox"), dash = $("#dash");
+  $("#officerPosition").innerHTML = `<option value="">Choose a position…</option>` + POSITIONS.map(p => `<option value="${p.name}">${p.name}${p.max > 1 ? ` (${p.max} seats)` : ""}</option>`).join("");
+  $("#imgCourse").innerHTML = `<option value="">Choose a course…</option>` + COURSES.map(c => `<option value="${c.key}">${esc(c.name)}</option>`).join("");
 
   onAuthStateChanged(auth, user => {
     unsubs.forEach(u => u()); unsubs = []; loaded.clear();
@@ -664,6 +846,8 @@ function initAdmin() {
       watch("news", query(collection(fs, "news"), orderBy("date", "desc")), renderAdmin),
       watch("images", query(collection(fs, "images"), orderBy("date", "desc")), () => { purge(); renderAdmin(); }),
       watch("imageSubmissions", query(collection(fs, "imageSubmissions"), orderBy("date", "desc")), renderAdmin),
+      watch("dailyBest", query(collection(fs, "dailyBest"), orderBy("day", "desc")), () => { purge(); renderAdmin(); }),
+      watch("officers", query(collection(fs, "officers"), orderBy("createdAt", "asc")), renderOfficersAdmin),
       watch("messages", collection(fs, "messages"), renderAdmin),
       watch("comments", collection(fs, "comments"), renderAdmin),
       watchDocument("contact", doc(fs, "siteContent", "contact"), renderContactAdmin),
@@ -888,9 +1072,10 @@ function initAdmin() {
   $("#imgForm").addEventListener("submit", async e => {
     e.preventDefault();
     const f = $("#file").files[0]; if (!f) return toast("Choose an image first.");
+    const course = $("#imgCourse").value; if (!COURSE[course]) return toast("Choose a course for this photo.");
     try {
       const src = await compress(f, 900), now = Date.now();
-      await addDoc(collection(fs, "images"), { src, caption: $("#caption").value.trim(), date: now, expireAt: Timestamp.fromMillis(now + DAY) });
+      await addDoc(collection(fs, "images"), { src, caption: $("#caption").value.trim(), course, date: now, expireAt: Timestamp.fromMillis(now + DAY) });
       e.target.reset(); toast("Posted. It will stay up for 24 hours.");
     } catch (err) { console.error(err); toast("Could not post that image."); }
   });
@@ -969,11 +1154,14 @@ function initAdmin() {
       if (act === "approveimg") {
         const submission = state.imageSubmissions.find(image => image.id === id);
         if (!submission) return toast("That photo submission is no longer available.");
+        const course = subCourse.get(id) || submission.course || "";
+        if (!COURSE[course]) return toast("Choose a course for this photo before approving it.");
         const batch = writeBatch(fs), now = Date.now();
         const imageRef = doc(collection(fs, "images"));
         batch.set(imageRef, {
           src: submission.src,
           caption: submission.caption || "",
+          course,
           date: now,
           expireAt: Timestamp.fromMillis(now + DAY)
         });
@@ -988,7 +1176,7 @@ function initAdmin() {
       }
       if (act.startsWith("del")) {
         if (!confirm("Delete this? This cannot be undone.")) return;
-        const col = act === "delnews" ? "news" : act === "delimg" ? "images" : act === "delsubmission" ? "imageSubmissions" : act === "delcomment" ? "comments" : "messages";
+        const col = act === "delnews" ? "news" : act === "delimg" ? "images" : act === "delsubmission" ? "imageSubmissions" : act === "delcomment" ? "comments" : act === "delbest" ? "dailyBest" : act === "delofficer" ? "officers" : "messages";
         if (act === "delmsg") {
           const comments = await getDocs(query(collection(fs, "comments"), where("messageId", "==", id)));
           await Promise.all(comments.docs.map(comment => deleteDoc(comment.ref)));
@@ -1011,6 +1199,69 @@ function initAdmin() {
       // Reject / unpost: take it off the 24-hour clock until it is posted again.
       await updateDoc(doc(fs, "messages", id), { status: act === "reject" ? "rejected" : "pending", postedAt: deleteField(), expireAt: deleteField() });
     } catch (err) { console.error(err); toast("That action failed."); }
+  });
+
+  // Course pickers inside the admin lists
+  dash.addEventListener("change", async e => {
+    const pending = e.target.closest("[data-subcourse]");
+    if (pending) { subCourse.set(pending.dataset.subcourse, pending.value); return; }
+    const posted = e.target.closest("[data-imgcourse]"); if (!posted || !COURSE[posted.value]) return;
+    try { await updateDoc(doc(fs, "images", posted.dataset.imgcourse), { course: posted.value }); toast("Course updated."); }
+    catch (err) { console.error(err); toast("Could not change the course."); }
+  });
+
+  /* SSC officers */
+  const officerForm = $("#officerForm");
+  function resetOfficerForm() {
+    editingOfficer = null; officerForm.reset(); refreshPositionOptions();
+    $("#officerPhoto").required = true; $("#officerPhotoHint").textContent = "";
+    $("#officerFormTitle").textContent = "Add an officer"; $("#saveOfficer").textContent = "Save officer";
+    $("#cancelOfficerEdit").classList.add("hidden"); $("#officerQrRemoveLabel").classList.add("hidden");
+  }
+  $("#cancelOfficerEdit").addEventListener("click", resetOfficerForm);
+  officerForm.addEventListener("submit", async e => {
+    e.preventDefault();
+    const val = sel => $(sel).value.trim();
+    const existing = editingOfficer && state.officers.find(o => o.id === editingOfficer);
+    const photoFile = $("#officerPhoto").files[0], qrFile = $("#officerQr").files[0];
+    if (!existing && !photoFile) return toast("Choose a portrait photo.");
+    const position = val("#officerPosition"), pos = POSITIONS.find(p => p.name === position);
+    if (!pos) return toast("Choose a position.");
+    if (state.officers.filter(o => o.position === position && o.id !== editingOfficer).length >= pos.max)
+      return toast(pos.max === 1 ? `There is already a ${position}. Edit or delete that officer first.` : `All ${pos.max} ${position} seats are filled.`);
+    const email = val("#officerEmail");
+    if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return toast("Enter a valid email address or leave it blank.");
+    const button = $("#saveOfficer"); button.disabled = true;
+    try {
+      const photo = photoFile ? await compress(photoFile, 600, 110000) : existing.photo;
+      let qr = existing ? existing.qr || "" : "";
+      if (qrFile) qr = await compress(qrFile, 700, 90000); else if ($("#removeOfficerQr").checked) qr = "";
+      const data = {
+        firstName: val("#officerFirst"), middleName: val("#officerMiddle"), lastName: val("#officerLast"),
+        position, level: pos.level,
+        bio: val("#officerBio"), message: val("#officerMessage"), email, qr, qrPlatform: $("#officerQrPlatform").value, photo,
+        createdAt: existing ? existing.createdAt || Date.now() : Date.now()
+      };
+      if (existing) await setDoc(doc(fs, "officers", existing.id), data); else await addDoc(collection(fs, "officers"), data);
+      toast(existing ? "Officer updated." : "Officer added.");
+      resetOfficerForm();
+    } catch (err) {
+      console.error("Could not save officer:", err);
+      toast("Could not save. Check the images (use smaller ones) and that you are logged in.");
+    } finally { button.disabled = false; }
+  });
+  $("#officerList").addEventListener("click", e => {
+    const b = e.target.closest("[data-oact=edit]"); if (!b) return;
+    const o = state.officers.find(x => x.id === b.dataset.id); if (!o) return;
+    editingOfficer = o.id; officerForm.reset(); refreshPositionOptions();
+    $("#officerFirst").value = o.firstName || ""; $("#officerMiddle").value = o.middleName || ""; $("#officerLast").value = o.lastName || "";
+    $("#officerPosition").value = o.position || "";
+    $("#officerBio").value = o.bio || ""; $("#officerQrPlatform").value = SOCIALS[o.qrPlatform] ? o.qrPlatform : "facebook"; $("#officerMessage").value = o.message || ""; $("#officerEmail").value = o.email || "";
+    $("#officerPhoto").required = false; $("#officerPhotoHint").textContent = "Leave empty to keep the current photo.";
+    $("#officerQrRemoveLabel").classList.toggle("hidden", !o.qr);
+    $("#officerFormTitle").textContent = "Edit officer"; $("#saveOfficer").textContent = "Save changes";
+    $("#cancelOfficerEdit").classList.remove("hidden");
+    officerForm.scrollIntoView({ behavior: "smooth", block: "start" });
   });
 }
 
@@ -1075,13 +1326,20 @@ function renderAdmin() {
     <div class="actions"><button class="btn danger sm" data-act="delnews" data-id="${n.id}">Delete</button></div></div>`).join("") : `<div class="empty">No news posted.</div>`;
 
   $("#imgList").innerHTML = imgs.length ? imgs.map(i => `
-    <div class="row" data-up="${i.date}" data-exp="${expiry(i)}"><div style="display:flex;gap:12px;align-items:center"><img class="thumb" src="${i.src}" alt="">
-    <div>${esc(i.caption || "(no caption)")}${stampHTML(i)}<div class="meta">${i.likes || 0} likes</div></div></div>
+    <div class="row" data-up="${i.date}" data-exp="${expiry(i)}"><div style="display:flex;gap:12px;align-items:center;min-width:0"><img class="thumb" src="${i.src}" alt="">
+    <div style="min-width:0">${esc(i.caption || "(no caption)")}${stampHTML(i)}<div class="meta">${i.likes || 0} likes</div>${courseSelectHTML("data-imgcourse", i.id, i.course, !COURSE[i.course])}</div></div>
     <div class="actions"><button class="btn danger sm" data-act="delimg" data-id="${i.id}">Delete now</button></div></div>`).join("") : `<div class="empty">No photos are up right now.</div>`;
   $("#imageSubmissions").innerHTML = state.imageSubmissions.length ? state.imageSubmissions.map(i => `
     <div class="row"><div style="display:flex;gap:12px;align-items:center;min-width:0"><img class="thumb" src="${esc(i.src)}" alt="Submitted photo preview">
-    <div style="min-width:0">${esc(i.caption || "(no caption)")}<div class="meta">${fmt(i.date)} · Pending approval</div></div></div>
+    <div style="min-width:0">${esc(i.caption || "(no caption)")}<div class="meta">${fmt(i.date)} · Pending approval</div>
+    <div class="meta">Student chose: ${COURSE[i.course] ? esc(COURSE[i.course].name) : "no course"}</div>${courseSelectHTML("data-subcourse", i.id, subCourse.get(i.id) || i.course, !COURSE[subCourse.get(i.id) || i.course])}</div></div>
     <div class="actions"><button class="btn ok sm" data-act="approveimg" data-id="${i.id}">Approve</button><button class="btn danger sm" data-act="rejectimg" data-id="${i.id}">Reject</button></div></div>`).join("") : `<div class="empty">No student photo submissions to review.</div>`;
+  const month = monthKey(now), winners = state.dailyBest.filter(d => d.month === month).sort((a, b) => (a.day < b.day ? 1 : -1));
+  $("#dailyWinnersNote").textContent = `Each day's most-liked photo is saved before it expires. All of ${monthName(month)}'s winners are highlighted on the student page for 24 hours on the last day of the month (${dayLabel(month + "-" + String(lastDayOf(month)).padStart(2, "0"))}). Keep this admin page open or visit it regularly so photos get saved.`;
+  $("#dailyWinners").innerHTML = winners.length ? winners.map(w => `
+    <div class="row"><div style="display:flex;gap:12px;align-items:center;min-width:0"><img class="thumb" src="${esc(w.src)}" alt="">
+    <div style="min-width:0"><strong>${dayLabel(w.day)}</strong> · ♥ ${w.likes || 0} like${w.likes === 1 ? "" : "s"}<div class="meta">${COURSE[w.course] ? esc(COURSE[w.course].name) : "No course"}${w.caption ? " · " + esc(w.caption) : ""}</div></div></div>
+    <div class="actions"><button class="btn danger sm" data-act="delbest" data-id="${w.id}">Remove</button></div></div>`).join("") : `<div class="empty">No daily winners saved yet this month.</div>`;
   stamps();
 
   const msgs = state.messages.filter(m => m.status !== "approved" || isLive(m));
@@ -1152,7 +1410,7 @@ function syncImportantMode() {
 function fillImportantForm(announcement) {
   $("#importantTitle").value = announcement ? announcement.title || "" : "";
   $("#importantBody").value = announcement ? announcement.body || "" : "";
-  $("#importantImage").value = "";
+  $("#importantImage").value = ""; $("#importantImage").dispatchEvent(new Event("change"));
   $("#removeImportantImage").checked = false;
   $("#importantImageRemoveLabel").classList.toggle("hidden", !(announcement && announcement.image));
   $("#importantDuration").value = announcement ? String(lockSeconds(announcement)) : "30";
@@ -1192,9 +1450,54 @@ function renderNewsPopupSettings() {
   $("#newsPopupLockSeconds").value = String(seconds);
 }
 
+let editingOfficer = null;
+// Positions that are already taken are locked in the dropdown; press Edit on that officer to change them.
+function refreshPositionOptions() {
+  const sel = $("#officerPosition"); if (!sel) return;
+  POSITIONS.forEach(p => {
+    const opt = [...sel.options].find(o => o.value === p.name); if (!opt) return;
+    const used = state.officers.filter(o => o.position === p.name && o.id !== editingOfficer).length, full = used >= p.max;
+    opt.disabled = full;
+    opt.textContent = p.max === 1 ? p.name + (full ? " — already assigned (use Edit)" : "") : `${p.name} (${used}/${p.max} filled)${full ? " — full" : ""}`;
+  });
+}
+function renderOfficersAdmin() {
+  refreshPositionOptions();
+  const list = sortedOfficers();
+  $("#officerList").innerHTML = list.length ? list.map(o => `
+    <div class="row"><div style="display:flex;gap:12px;align-items:center;min-width:0"><img class="thumb" src="${esc(o.photo || "")}" alt="">
+    <div style="min-width:0"><strong>${esc(officerName(o))}</strong><div class="meta">${esc(o.position || "")} ${officerLevel(o) ? "· Row " + officerLevel(o) : ""}${o.email ? " · " + esc(o.email) : ""}${o.qr ? " · QR: " + (socialOf(o) === "other" ? "Social media" : SOCIALS[socialOf(o)]) : ""}</div></div></div>
+    <div class="actions"><button class="btn sm" type="button" data-oact="edit" data-id="${o.id}">Edit</button><button class="btn danger sm" data-act="delofficer" data-id="${o.id}">Delete</button></div></div>`).join("") : `<div class="empty">No officers added yet.</div>`;
+}
+
 function renderContactAdmin() {
   $("#contactPreview").innerHTML = contactHTML(true) || `<div class="empty">No contact details have been saved.</div>`;
 }
 
+// Replaces every plain "Choose file" button with a "+" tile and shows thumbnails of the chosen photos.
+function enhanceFileInputs() {
+  document.querySelectorAll("input[type=file]").forEach(input => {
+    if (input.closest(".dropzone") || input.dataset.plus) return;
+    input.dataset.plus = "1";
+    const many = input.multiple;
+    const field = document.createElement("div"); field.className = "plus-field";
+    const previews = document.createElement("div"); previews.className = "plus-previews";
+    const tile = document.createElement("label"); tile.className = "plus-tile";
+    tile.innerHTML = `<span class="plus-icon" aria-hidden="true">+</span><span class="plus-text"></span>`;
+    input.parentNode.insertBefore(field, input);
+    field.append(previews, tile); tile.prepend(input);
+    let urls = [];
+    const sync = () => {
+      urls.forEach(u => URL.revokeObjectURL(u)); urls = []; previews.innerHTML = "";
+      const files = [...input.files];
+      files.forEach(f => { const u = URL.createObjectURL(f); urls.push(u); const im = document.createElement("img"); im.src = u; im.alt = ""; previews.appendChild(im); });
+      $(".plus-text", tile).textContent = files.length ? (many ? "Change photos" : "Change") : (many ? "Add photos" : "Add photo");
+    };
+    input.addEventListener("change", sync);
+    if (input.form) input.form.addEventListener("reset", () => setTimeout(sync));
+    sync();
+  });
+}
+enhanceFileInputs();
 if (page === "student") initStudent();
 if (page === "admin") initAdmin();

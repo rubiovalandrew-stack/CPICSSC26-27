@@ -11,7 +11,7 @@
 <body data-page="student">
 <header class="top"><div class="wrap">
   <a class="brand" href="#">CPIC Supreme Student Council<span>.</span></a>
-  <nav><a href="#news-h">Bulletin</a><a href="#photos">Moments</a><a href="#messages">Messages</a><a href="#send">Send message</a><a href="#contact">Contact us</a></nav>
+  <nav><a href="#news-h">Bulletin</a><a href="#photos">Moments</a><a href="#messages">Messages</a><a href="#send">Send message</a><button type="button" class="nav-btn" id="openOfficers">SSC Officers</button><a href="#contact">Contact us</a></nav>
 </div></header>
 
 <div class="hero"><div class="wrap">
@@ -20,7 +20,7 @@
   <a class="btn" href="#send">Send an anonymous message</a>
 </div></div>
 
-<section class="important-banner hidden" id="importantAnnouncementBanner" aria-label="Important announcement" aria-live="polite"></section>
+<section class="important-banner hidden" id="importantAnnouncementBanner" aria-label="Announcement" aria-live="polite"></section>
 
 <section class="block"><div class="wrap">
   <h2 id="news-h">Campus Bulletin</h2><p class="sub">Announcements from the admin and the CPIC Supreme Student Council, newest first. Each one stays up for 24 hours.</p>
@@ -32,22 +32,44 @@
 </div></section>
 
 <section class="block" id="photos"><div class="wrap">
-  <h2>Campus Moments</h2><p class="sub">Fresh photos from around school stay up for 24 hours, swipe for more, tap a photo to view it full size, and swipe at the end to send yours for a chance to be posted too.</p>
+  <h2>Campus Moments</h2><p class="sub">Fresh photos from around school stay up for 24 hours, swipe for more, tap a photo to view it full size, and swipe at the end to send yours for a chance to be posted too. Pick a course to see its photos.</p>
+  <div id="monthlyBest" class="hidden" aria-live="polite"></div>
+  <div class="cat-tabs" id="galleryTabs" role="tablist" aria-label="Campus Moments by course"></div>
+  <p class="cat-name" id="galleryCourseName"></p>
   <div class="gallery" id="gallery"></div>
 </div></section>
 
-<dialog class="confirm-dialog" id="imageSubmissionDialog" aria-labelledby="imageSubmissionTitle">
-  <form class="confirm-dialog-body" id="imageSubmissionForm">
-    <h2 id="imageSubmissionTitle">Submit a Campus Moment</h2>
-    <p class="settings-warning">Your photo will be reviewed by an admin. It will only appear in Campus Moments if approved.</p>
-    <label for="studentImage">Image file</label>
-    <input type="file" id="studentImage" accept="image/*" required>
-    <label for="studentImageCaption">Caption (optional)</label>
-    <input type="text" id="studentImageCaption" maxlength="100">
-    <div class="confirm-actions">
+<dialog class="confirm-dialog submit-dialog" id="imageSubmissionDialog" aria-labelledby="imageSubmissionTitle">
+  <form class="submit-form" id="imageSubmissionForm">
+    <header class="submit-head">
+      <div>
+        <h2 id="imageSubmissionTitle">Share a Campus Moment</h2>
+        <p>An admin reviews every photo. If approved, it is posted for 24 hours under the course you pick.</p>
+      </div>
+      <button class="submit-x" type="button" id="closeImageSubmission" aria-label="Close">&times;</button>
+    </header>
+    <div class="submit-body">
+      <div class="step-label"><span>1</span>Your photo</div>
+      <label class="dropzone" id="dropzone" for="studentImage">
+        <input type="file" id="studentImage" accept="image/*" required>
+        <img id="studentImagePreview" alt="Preview of the selected photo" hidden>
+        <span class="dz-empty">
+          <span class="plus-icon" aria-hidden="true">+</span>
+          <strong>Tap to add a photo</strong>
+          <small>We resize it for you</small>
+        </span>
+        <span class="dz-change" hidden>Change photo</span>
+      </label>
+      <div class="step-label"><span>2</span><label for="studentCourse" style="margin:0">Which course is this photo for?</label></div>
+      <select id="studentCourse" required></select>
+      <div class="step-label"><span>3</span>Caption <em>(optional)</em></div>
+      <input type="text" id="studentImageCaption" maxlength="100" placeholder="Say something about this moment" aria-label="Caption">
+      <div class="count" id="captionCount">0 / 100</div>
+    </div>
+    <footer class="submit-foot">
       <button class="btn ghost" type="button" id="cancelImageSubmission">Cancel</button>
       <button class="btn" type="submit" id="submitImage">Submit for approval</button>
-    </div>
+    </footer>
   </form>
 </dialog>
 
@@ -98,6 +120,20 @@
   </dialog>
 </div></section>
 
+
+<dialog class="org-dialog" id="officerDialog" aria-labelledby="officerDialogTitle">
+  <article class="important-announcement-card">
+    <header class="important-announcement-head">
+      <span class="important-badge"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M16 11a3 3 0 1 0 0-6 3 3 0 0 0 0 6zm-8 0a3 3 0 1 0 0-6 3 3 0 0 0 0 6zm0 2c-2.3 0-7 1.2-7 3.5V19h14v-2.5C15 14.2 10.3 13 8 13zm8 0c-.3 0-.6 0-1 .1 1.2.8 2 1.9 2 3.4V19h6v-2.5c0-2.3-4.7-3.5-7-3.5z"/></svg>SSC Officers</span>
+      <h2 id="officerDialogTitle">Meet your SSC officers</h2>
+    </header>
+    <div class="important-announcement-content" id="officerContent"></div>
+    <div class="important-announcement-foot org-foot">
+      <button class="btn ghost hidden" type="button" id="officerBack">&larr; Back to chart</button>
+      <button class="btn" type="button" id="officerClose">Close</button>
+    </div>
+  </article>
+</dialog>
 
 <section class="block" id="contact"><div class="wrap">
   <h2>Contact us</h2><p class="sub">Connect with CPIC on Facebook or reach us by phone.</p>

@@ -33,15 +33,28 @@ service cloud.firestore {
     }
 
     match /imageSubmissions/{id} {
-      allow create: if request.resource.data.keys().hasOnly(['src','caption','status','date'])
+      allow create: if request.resource.data.keys().hasOnly(['src','caption','course','status','date'])
                     && request.resource.data.src is string
                     && request.resource.data.src.matches('^data:image/jpeg;base64,[A-Za-z0-9+/=]+$')
                     && request.resource.data.src.size() <= 900000
+                    && request.resource.data.course in ['crim','cs','tourism','act','btvted','hrs']
                     && request.resource.data.caption is string
                     && request.resource.data.caption.size() <= 100
                     && request.resource.data.status == 'pending'
                     && request.resource.data.date is int;
       allow read, update, delete: if isAdmin();
+    }
+
+    // Most-liked photo of each day, kept until the end-of-month highlight.
+    match /dailyBest/{id} {
+      allow read: if true;
+      allow create, update, delete: if isAdmin();
+    }
+
+    // SSC officers organizational chart.
+    match /officers/{id} {
+      allow read: if true;
+      allow create, update, delete: if isAdmin();
     }
 
     match /siteContent/contact {

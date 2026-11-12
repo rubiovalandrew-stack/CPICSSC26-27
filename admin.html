@@ -34,8 +34,9 @@
     <div class="tabs" role="tablist">
       <button role="tab" aria-selected="true" data-tab="tMsg">Messages</button>
       <button role="tab" aria-selected="false" data-tab="tNews">News</button>
-      <button role="tab" aria-selected="false" data-tab="tImportant">Important announcement</button>
+      <button role="tab" aria-selected="false" data-tab="tImportant">Announcement</button>
       <button role="tab" aria-selected="false" data-tab="tImg">Images</button>
+      <button role="tab" aria-selected="false" data-tab="tOfficers">SSC Officers</button>
       <button role="tab" aria-selected="false" data-tab="tContact">Contact us</button>
     </div>
 
@@ -139,6 +140,8 @@
           <p class="meta">Photos are removed automatically 24 hours after posting.</p>
           <label for="file">Image file</label>
           <input type="file" id="file" accept="image/*" required>
+          <label for="imgCourse">Course</label>
+          <select id="imgCourse" required></select>
           <label for="caption">Caption (optional)</label>
           <input type="text" id="caption" maxlength="100">
           <button class="btn" type="submit" style="margin-top:14px">Post image</button>
@@ -148,7 +151,10 @@
           <p class="meta">Approve a submission to publish it in Campus Moments for 24 hours, or reject it to remove it.</p>
           <div id="imageSubmissions"></div>
           <h2>Posted images</h2>
-          <div id="imgList"></div></div>
+          <div id="imgList"></div>
+          <h2 style="margin-top:28px">Daily top photos (saved)</h2>
+          <p class="meta" id="dailyWinnersNote"></p>
+          <div id="dailyWinners"></div></div>
       </div>
     </div>
 
@@ -176,6 +182,44 @@
           </form>
         </div>
         <div><h2>Current contact details</h2><div id="contactPreview"></div></div>
+      </div>
+    </div>
+    <div class="tabpane hidden" id="tOfficers">
+      <div class="admin-grid two">
+        <form class="panel" id="officerForm">
+          <h2 id="officerFormTitle">Add an officer</h2>
+          <p class="meta">Everything here can be edited later. Photos and QR codes are resized automatically.</p>
+          <label for="officerFirst">First name</label>
+          <input type="text" id="officerFirst" maxlength="40" required>
+          <label for="officerMiddle">Middle name (optional)</label>
+          <input type="text" id="officerMiddle" maxlength="40">
+          <label for="officerLast">Last name</label>
+          <input type="text" id="officerLast" maxlength="40" required>
+          <label for="officerPosition">Position / Title</label>
+          <select id="officerPosition" required></select>
+          <p class="meta">The chart places each position automatically: the 2 Advisors in their own section on top, then President, Vice-President, Secretary / Treasurer / Auditor, and the 12 Senators. A position that is already filled is locked in the list below; press Edit on that officer to change them.</p>
+          <label for="officerBio">Short bio / About you (1–3 sentences)</label>
+          <textarea id="officerBio" maxlength="400" required></textarea>
+          <label for="officerMessage">Message to the student body</label>
+          <textarea id="officerMessage" maxlength="600" required></textarea>
+          <label for="officerEmail">Email address (optional)</label>
+          <input type="email" id="officerEmail" maxlength="120">
+          <label for="officerPhoto">Photo / portrait</label>
+          <input type="file" id="officerPhoto" accept="image/*" required>
+          <p class="meta" id="officerPhotoHint"></p>
+          <label for="officerQr">Social media QR code (optional)</label>
+          <input type="file" id="officerQr" accept="image/*">
+          <label for="officerQrPlatform">Which social media is this QR code for?</label>
+          <select id="officerQrPlatform"><option value="facebook">Facebook</option><option value="instagram">Instagram</option><option value="x">X</option><option value="tiktok">TikTok</option><option value="youtube">YouTube</option><option value="other">Other / not listed</option></select>
+          <label class="important-image-remove hidden" id="officerQrRemoveLabel" for="removeOfficerQr">
+            <input type="checkbox" id="removeOfficerQr"> Remove the current QR code
+          </label>
+          <div class="important-admin-actions">
+            <button class="btn" type="submit" id="saveOfficer">Save officer</button>
+            <button class="btn ghost hidden" type="button" id="cancelOfficerEdit">Cancel edit</button>
+          </div>
+        </form>
+        <div><h2>Current officers</h2><div id="officerList"></div></div>
       </div>
     </div>
   </main>
