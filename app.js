@@ -15,8 +15,16 @@ const NEW_DAYS = 7;       // only news newer than this triggers the lock
 const MESSAGE_LIMIT = 3000;
 const MESSAGE_GROW_LIMIT = 1000;
 const MAX_IMAGES_PER_COURSE = 6;
-const SITE_SKINS = new Set(["basic", "mario", "peach", "coffee", "sage"]);
-const SITE_SKIN_LABELS = { basic: "Basic theme", mario: "Super Mario theme", peach: "Peach theme", coffee: "Coffee theme", sage: "Sage theme" };
+const SITE_SKINS = new Set(["basic", "mario", "peach", "coffee", "sage", "sunset-riviera", "midnight-lavender"]);
+const SITE_SKIN_LABELS = {
+  basic: "Basic theme",
+  mario: "Super Mario theme",
+  peach: "Peach theme",
+  coffee: "Coffee theme",
+  sage: "Sage theme",
+  "sunset-riviera": "Sunset Riviera theme",
+  "midnight-lavender": "Midnight Lavender theme"
+};
 const normalizeSiteSkin = skin => SITE_SKINS.has(skin) ? skin : "basic";
 
 /* Campus Moments categories */
