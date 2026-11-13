@@ -1,21 +1,23 @@
-:root{--ink:#12264a;--ink2:#4a5a78;--bg:#f4f7fb;--card:#fff;--line:#d9e1ee;--gold:#e8a317;--gold-d:#9a6a00;--red:#c8372d;--green:#1f8a55;--radius:10px}
-@media (prefers-color-scheme:dark){:root{--ink:#eaf0fb;--ink2:#a7b5cf;--bg:#0e1626;--card:#16213a;--line:#2a3a5c;--gold-d:#f0b94a}}
+:root{--ink:#12264a;--ink2:#4a5a78;--bg:#f4f7fb;--card:#fff;--line:#d9e1ee;--gold:#e8a317;--gold-d:#9a6a00;--red:#c8372d;--green:#1f8a55;--radius:10px;--hdr-bg:#fff;--hdr-edge:rgba(18,38,74,.14);--hdr-ink:#12264a;--hdr-mark:#a86b00;--hdr-mark-shadow:none;--hdr-line:rgba(18,38,74,.28);--nav-bg:#eef3fb;--nav-ink:#35476b;--nav-ink-hover:#12264a;--nav-hover-bg:rgba(18,38,74,.07);--nav-edge:rgba(232,163,23,.85);--nav-bottom:rgba(18,38,74,.14);}
+:root{color-scheme:light}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){color-scheme:dark;--ink:#eaf0fb;--ink2:#a7b5cf;--bg:#0e1626;--card:#16213a;--line:#2a3a5c;--gold-d:#f0b94a;--hdr-bg:#0f2347;--hdr-edge:transparent;--hdr-ink:#fff;--hdr-mark:#f2b93a;--hdr-mark-shadow:0 2px 0 rgba(0,0,0,.25);--hdr-line:rgba(242,185,58,.7);--nav-bg:#0a1a3a;--nav-ink:#c9d7f2;--nav-ink-hover:#fff;--nav-hover-bg:rgba(255,255,255,.05);--nav-edge:rgba(232,163,23,.5);--nav-bottom:rgba(255,255,255,.1);}}
+:root[data-theme="dark"]{color-scheme:dark;--ink:#eaf0fb;--ink2:#a7b5cf;--bg:#0e1626;--card:#16213a;--line:#2a3a5c;--gold-d:#f0b94a;--hdr-bg:#0f2347;--hdr-edge:transparent;--hdr-ink:#fff;--hdr-mark:#f2b93a;--hdr-mark-shadow:0 2px 0 rgba(0,0,0,.25);--hdr-line:rgba(242,185,58,.7);--nav-bg:#0a1a3a;--nav-ink:#c9d7f2;--nav-ink-hover:#fff;--nav-hover-bg:rgba(255,255,255,.05);--nav-edge:rgba(232,163,23,.5);--nav-bottom:rgba(255,255,255,.1);}
 *{box-sizing:border-box}
 html{scroll-behavior:smooth}
-body{margin:0;font-family:"Source Sans 3",system-ui,sans-serif;background:var(--bg);color:var(--ink);line-height:1.6}
-h1,h2,h3{font-family:"Bricolage Grotesque","Source Sans 3",system-ui,sans-serif;line-height:1.15;margin:0 0 .5em}
+body{margin:0;font-family:var(--font-body,"Source Sans 3"),system-ui,sans-serif;background:var(--bg);color:var(--ink);line-height:1.6}
+h1,h2,h3{font-family:var(--font-heading,"Bricolage Grotesque"),var(--font-body,"Source Sans 3"),system-ui,sans-serif;line-height:1.15;margin:0 0 .5em}
 a{color:inherit}
 .wrap{max-width:1040px;margin:0 auto;padding:0 20px}
 header.top{background:#12264a;color:#fff}
 header.top .wrap{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:14px 20px;flex-wrap:wrap}
-.brand{font-family:"Bricolage Grotesque",sans-serif;font-weight:800;font-size:1.4rem;letter-spacing:.5px;text-decoration:none}
+.brand{font-family:var(--font-heading,"Bricolage Grotesque"),sans-serif;font-weight:800;font-size:1.4rem;letter-spacing:.5px;text-decoration:none}
 .brand span{color:var(--gold)}
 nav a{color:#dbe6fb;text-decoration:none;margin-left:18px;font-weight:600}
 nav a:hover,nav a:focus-visible{color:var(--gold)}
 .hero{background:#12264a;color:#fff;padding:56px 0 64px;border-bottom:6px solid var(--gold)}
 .hero h1{font-size:clamp(2rem,5vw,3.4rem);max-width:16ch}
 .hero p{max-width:52ch;color:#c5d3ee;font-size:1.1rem}
-.btn{display:inline-block;background:var(--gold);color:#241800;border:0;border-radius:8px;padding:11px 20px;font:700 1rem "Source Sans 3",sans-serif;cursor:pointer;text-decoration:none}
+.btn{display:inline-block;background:var(--gold);color:#241800;border:0;border-radius:8px;padding:11px 20px;font:700 1rem var(--font-body,"Source Sans 3"),sans-serif;cursor:pointer;text-decoration:none}
 .btn:hover{filter:brightness(1.08)}
 .btn.ghost{background:transparent;color:var(--ink);border:1.5px solid var(--line)}
 .btn.danger{background:var(--red);color:#fff}
@@ -335,11 +337,12 @@ body[data-page=student] header.top nav a.nav-cta:hover,body[data-page=student] h
 .important-banner-inner:hover{box-shadow:0 12px 32px rgba(18,38,74,.28)}
 .important-banner-body{display:flex;align-items:center;gap:20px}
 .important-banner-main{flex:1 1 auto;min-width:0}
-.important-banner-title{display:block;font-family:"Bricolage Grotesque","Source Sans 3",system-ui,sans-serif;font-weight:800;font-size:clamp(1.4rem,3.2vw,1.9rem);line-height:1.15;margin:0 0 .3em;overflow-wrap:anywhere}
+.important-banner-title{display:block;font-family:var(--font-heading,"Bricolage Grotesque"),var(--font-body,"Source Sans 3"),system-ui,sans-serif;font-weight:800;font-size:clamp(1.4rem,3.2vw,1.9rem);line-height:1.15;margin:0 0 .3em;overflow-wrap:anywhere}
 .important-banner-text{display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;max-width:72ch;color:#4a5a78;font-size:1.05rem;overflow-wrap:anywhere}
 .important-banner-img{flex:0 0 220px;width:220px;aspect-ratio:4/3;object-fit:cover;border-radius:8px;background:#eef2f9}
 .important-banner-hint{display:block;margin-top:14px;color:var(--gold-d);font-weight:700;font-size:.95rem}
-@media(prefers-color-scheme:dark){.important-banner-hint{color:#9a6a00}}
+@media(prefers-color-scheme:dark){:root:not([data-theme="light"]) .important-banner-hint{color:#9a6a00}}
+:root[data-theme="dark"] .important-banner-hint{color:#9a6a00}
 @media(max-width:560px){.important-banner{padding:28px 16px 0}.important-banner-inner{padding:18px 18px 16px;border-left-width:6px}.important-banner-body{flex-direction:column;align-items:stretch;gap:14px}.important-banner-img{flex-basis:auto;width:100%;aspect-ratio:16/9}}
 
 /* v15: Campus Moments course tabs */
@@ -441,7 +444,7 @@ body[data-page=student] header.top nav .nav-btn:hover,body[data-page=student] he
 .org-foot{display:flex;gap:10px}
 .org-foot .btn{flex:1 1 0;width:auto}
 .org-dialog h3{margin:0}
-.org-dialog h4{font-family:"Bricolage Grotesque","Source Sans 3",sans-serif;font-size:1rem;margin:18px 0 4px}
+.org-dialog h4{font-family:var(--font-heading,"Bricolage Grotesque"),var(--font-body,"Source Sans 3"),sans-serif;font-size:1rem;margin:18px 0 4px}
 
 /* chart: the higher the position, the bigger the card */
 .org-level{gap:12px;padding-top:26px}
@@ -492,7 +495,7 @@ body[data-page=student] header.top nav .nav-btn:hover,body[data-page=student] he
 
 /* serif headings to match the header */
 body[data-page=student] .hero h1,
-body[data-page=student] .block h2{font-family:"Crimson Pro",Georgia,serif;font-weight:700;letter-spacing:0}
+body[data-page=student] .block h2{font-family:var(--font-heading,"Crimson Pro"),Georgia,serif;font-weight:700;letter-spacing:0}
 body[data-page=student] .hero h1{font-size:clamp(2.2rem,5.4vw,3.7rem);line-height:1.08}
 
 /* ===== Hero photo + header polish ===== */
@@ -501,7 +504,7 @@ body[data-page=student] .hero h1{font-size:clamp(2.2rem,5.4vw,3.7rem);line-heigh
 .hero-bg{position:absolute;top:-60px;right:0;bottom:0;left:0;z-index:0;display:none;background-size:cover;background-position:center;
   opacity:var(--hero-fade,1);transform:translateY(var(--hero-shift,0px));will-change:opacity,transform}
 .hero-bg::after{content:"";position:absolute;inset:0;
-  background:linear-gradient(90deg,rgba(11,27,58,var(--hero-dim,.6)),rgba(11,27,58,calc(var(--hero-dim,.6)*.6)))}
+  background:linear-gradient(90deg,rgba(11,27,58,calc(var(--hero-dim,.6) + .15)),rgba(11,27,58,calc(var(--hero-dim,.6)*.8)))}
 .hero.has-photo .hero-bg{display:block}
 .hero.has-photo h1,.hero.has-photo p{text-shadow:0 1px 14px rgba(5,12,30,.45)}
 @media(prefers-reduced-motion:reduce){.hero-bg{transform:none!important}}
@@ -554,3 +557,320 @@ body[data-page=student] section[id],body[data-page=student] #news-h{scroll-margi
   .site-nav a::after,.site-nav .nav-btn::after{left:14px;right:14px}
 }
 @media(max-width:380px){body[data-page=student] header.top .brand-name{font-size:1rem}.masthead-cta{padding:8px 11px}}
+
+/* ===== Light / dark toggle ===== */
+.masthead-actions{flex:none;display:flex;align-items:center;gap:12px}
+.theme-toggle{flex:none;display:grid;place-items:center;width:42px;height:42px;padding:0;border-radius:50%;cursor:pointer;
+  border:1px solid rgba(232,163,23,.55);background:rgba(255,255,255,.04);color:#e9d9a8;
+  transition:background .18s ease,color .18s ease,border-color .18s ease,transform .25s ease}
+.theme-toggle:hover,.theme-toggle:focus-visible{background:rgba(232,163,23,.16);border-color:var(--gold);color:#fff}
+.theme-toggle:active{transform:rotate(25deg)}
+.theme-toggle:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
+.theme-toggle svg{width:20px;height:20px}
+.theme-toggle .i-sun{display:none}
+.theme-toggle[data-mode="dark"] .i-sun{display:block}
+.theme-toggle[data-mode="dark"] .i-moon{display:none}
+@media(max-width:700px){.masthead-actions{gap:8px}.theme-toggle{width:38px;height:38px}}
+@media(prefers-reduced-motion:reduce){.theme-toggle{transition:none}.theme-toggle:active{transform:none}}
+
+/* ===== Phone layout fixes ===== */
+body[data-page=student]{overflow-x:clip}
+.hero.has-photo p{color:#e8eefb}
+@media(max-width:700px){
+  .hero-bg::after{background:rgba(11,27,58,calc(var(--hero-dim,.6) + .12))}
+  body[data-page=student] header.top .wrap{gap:10px;padding:12px 14px}
+  body[data-page=student] header.top .brand{flex:1 1 0;min-width:0;gap:10px}
+  body[data-page=student] header.top .brand-mark{width:40px;height:40px;font-size:.74rem;box-shadow:0 0 0 2px #0f2347,0 0 0 3px rgba(232,163,23,.55)}
+  body[data-page=student] header.top .brand-name{min-width:0;padding-left:10px;font-size:1rem;line-height:1.15}
+  .masthead-actions{gap:8px}
+  .theme-toggle{width:36px;height:36px}
+  .theme-toggle svg{width:18px;height:18px}
+  .masthead-cta{padding:8px 12px;font-size:.88rem}
+  .site-nav .wrap{padding:0 4px}
+  .site-nav a,.site-nav .nav-btn{padding:12px 10px;font-size:.9rem}
+  .site-nav a::after,.site-nav .nav-btn::after{left:10px;right:10px}
+}
+@media(max-width:400px){
+  body[data-page=student] header.top .brand-mark{width:36px;height:36px;font-size:.68rem}
+  body[data-page=student] header.top .brand-name{font-size:.92rem;padding-left:8px}
+  .masthead-cta{padding:7px 10px;font-size:.82rem}
+  .site-nav a,.site-nav .nav-btn{padding:12px 8px;font-size:.85rem}
+}
+
+/* ===== Floating light/dark button (bottom right) ===== */
+.theme-toggle{position:fixed;right:calc(18px + env(safe-area-inset-right,0px));bottom:calc(18px + env(safe-area-inset-bottom,0px));z-index:80;
+  width:50px;height:50px;border:2px solid var(--gold);background:#0f2347;color:#f4d58a;
+  box-shadow:0 6px 18px rgba(5,12,30,.4)}
+.theme-toggle:hover,.theme-toggle:focus-visible{background:#183263;color:#fff;border-color:var(--gold);transform:translateY(-2px)}
+.theme-toggle:active{transform:scale(.94)}
+.theme-toggle svg{width:22px;height:22px}
+@media(max-width:700px){.theme-toggle{width:46px;height:46px;right:calc(14px + env(safe-area-inset-right,0px));bottom:calc(14px + env(safe-area-inset-bottom,0px))}.theme-toggle svg{width:21px;height:21px}}
+
+/* ===== Simple wordmark: CPIC | Supreme Student Council ===== */
+body[data-page=student] header.top .brand{display:flex;align-items:center;gap:16px;min-width:0}
+body[data-page=student] header.top .brand-mark{
+  flex:none;display:block;width:auto;height:auto;border:0;border-radius:0;background:none;box-shadow:none;
+  font:700 2.7rem/1 "Crimson Pro",Georgia,serif;letter-spacing:.04em;color:#f2b93a;text-shadow:0 2px 0 rgba(0,0,0,.25)}
+body[data-page=student] header.top .brand-name{
+  padding:4px 0 4px 16px;border-left:2px solid rgba(242,185,58,.7);
+  font:700 1.55rem/1.15 "Crimson Pro",Georgia,serif;letter-spacing:.01em;color:#fff}
+@media(max-width:700px){
+  body[data-page=student] header.top .brand{gap:10px}
+  body[data-page=student] header.top .brand-mark{width:auto;height:auto;font-size:1.9rem;box-shadow:none}
+  body[data-page=student] header.top .brand-name{padding:2px 0 2px 10px;font-size:1.02rem;line-height:1.15}
+}
+@media(max-width:400px){
+  body[data-page=student] header.top .brand-mark{width:auto;height:auto;font-size:1.65rem}
+  body[data-page=student] header.top .brand-name{padding-left:8px;font-size:.92rem}
+}
+
+
+/* ===== Basic theme: header and menu follow light / dark ===== */
+body[data-page=student] header.top{background:var(--hdr-bg);box-shadow:0 1px 0 var(--hdr-edge)}
+body[data-page=student] header.top .brand-mark{color:var(--hdr-mark);text-shadow:var(--hdr-mark-shadow)}
+body[data-page=student] header.top .brand-name{color:var(--hdr-ink);border-left-color:var(--hdr-line)}
+body[data-page=student] .site-nav{background:var(--nav-bg);border-top-color:var(--nav-edge);border-bottom-color:var(--nav-bottom)}
+body[data-page=student] .site-nav a,body[data-page=student] .site-nav .nav-btn{color:var(--nav-ink)}
+body[data-page=student] .site-nav a:hover,body[data-page=student] .site-nav a:focus-visible,body[data-page=student] .site-nav .nav-btn:hover,body[data-page=student] .site-nav .nav-btn:focus-visible,body[data-page=student] .site-nav a[aria-current]{color:var(--nav-ink-hover);background:var(--nav-hover-bg)}
+
+/* ===== Admin: site theme picker ===== */
+.skin-options{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:14px;max-width:760px;margin:14px 0}
+.skin-option{display:flex;flex-direction:column;gap:8px;text-align:left;padding:12px;border:2px solid var(--line);border-radius:10px;background:var(--card);color:var(--ink);font:inherit;cursor:pointer}
+.skin-option:hover{border-color:var(--gold)}
+.skin-option[aria-pressed=true]{border-color:var(--gold);box-shadow:0 0 0 3px rgba(232,163,23,.35)}
+.skin-option strong{font-size:1.05rem}
+.skin-option span.d{color:var(--ink2);font-size:.92rem}
+.skin-option .tag{align-self:flex-start;display:none;padding:1px 9px;border-radius:99px;background:var(--gold);color:#241800;font-size:.78rem;font-weight:700}
+.skin-option[aria-pressed=true] .tag{display:inline-block}
+.skin-swatch{height:70px;border-radius:6px;border:1px solid var(--line)}
+.skin-swatch.basic{background:linear-gradient(90deg,#fff 0 25%,#12264a 25% 75%,#e8a317 75%)}
+.skin-swatch.peach{background:linear-gradient(90deg,#FFDFC3 0 20%,#FEA38E 20% 40%,#FBA2AB 40% 60%,#FBEBD0 60% 80%,#F3B5A0 80%)}
+.skin-swatch.coffee{background:linear-gradient(90deg,#561C24 0 25%,#6D2932 25% 50%,#C7B7A3 50% 75%,#E8D8C4 75%)}
+.skin-swatch.mario{background:linear-gradient(180deg,#5c94fc 0 52%,#80d010 52% 60%,#c84c0c 60%)}
+.skin-swatch.sage{background:linear-gradient(90deg,#0D2D20 0 20%,#3E603F 20% 40%,#789B7F 40% 60%,#B8C9B9 60% 80%,#E6EEDF 80%)}
+
+
+
+
+/* ===== Basic theme: header text always uses the current mode's colour ===== */
+body[data-page=student] header.top .brand .brand-name{color:var(--hdr-ink)}
+body[data-page=student] header.top .brand .brand-mark{color:var(--hdr-mark);text-shadow:var(--hdr-mark-shadow)}
+
+/* =====================================================================
+   Peach, Coffee and Sage themes follow the light / dark button.
+   ===================================================================== */
+html[data-skin=peach] body[data-page=student]{--font-heading:"Pacifico";--font-body:"Nunito Sans";--hero-btn-bg:#561C24;--hero-btn-ink:#FFDFC3;--ink:#561C24;--ink2:#7d4a4f;--bg:#FBEBD0;--card:#FFF6EA;--line:#F3B5A0;--gold:#FEA38E;--gold-d:#A8432F;--on-gold:#3a1410;
+  --brand:#561C24;--brand-ink:#FFDFC3;--page-bg:linear-gradient(180deg,#FFE6D3 0%,#FBEBD0 35%,#FDDDCB 72%,#FBEBD0 100%);
+  --hdr-bg:#FFDFC3;--hdr-edge:rgba(86,28,36,.14);--hdr-ink:#561C24;--hdr-mark:#B5483A;--hdr-mark-shadow:none;--hdr-line:rgba(86,28,36,.35);
+  --nav-bg:#F3B5A0;--nav-ink:#561C24;--nav-ink-hover:#3b1017;--nav-hover-bg:rgba(86,28,36,.12);--nav-edge:rgba(86,28,36,.2);--nav-bottom:rgba(86,28,36,.25);--nav-underline:#561C24;
+  --hero-bg:linear-gradient(135deg,#FEA38E 0%,#FBA2AB 100%);--hero-ink:#561C24;--hero-ink2:#6D2932;--footer-bg:#561C24;--footer-ink:#E8D8C4;
+  background:var(--bg) var(--page-bg);color:var(--ink)}
+:root[data-theme="dark"][data-skin=peach] body[data-page=student]{--hero-btn-bg:initial;--hero-btn-ink:initial;--ink:#FBEBD0;--ink2:#E3C3B3;--bg:#2a1714;--card:#3b2420;--line:#5a3a33;--gold:#FEA38E;--gold-d:#FEA38E;--on-gold:#3a1410;
+  --brand:#4a2622;--brand-ink:#FFDFC3;--page-bg:linear-gradient(180deg,#3a2019 0%,#2a1714 45%,#1f100e 100%);
+  --hdr-bg:#3b2420;--hdr-edge:rgba(0,0,0,.3);--hdr-ink:#FBEBD0;--hdr-mark:#FEA38E;--hdr-mark-shadow:0 2px 0 rgba(0,0,0,.3);--hdr-line:rgba(254,163,142,.55);
+  --nav-bg:#2f1c19;--nav-ink:#E3C3B3;--nav-ink-hover:#FBEBD0;--nav-hover-bg:rgba(251,235,208,.08);--nav-edge:rgba(254,163,142,.45);--nav-bottom:rgba(251,235,208,.12);--nav-underline:#FEA38E;
+  --hero-bg:linear-gradient(135deg,#8a4a48 0%,#5a2e2c 100%);--hero-ink:#FBEBD0;--hero-ink2:#E3C3B3;--footer-bg:#1f100e;--footer-ink:#E3C3B3;}
+@media(prefers-color-scheme:dark){:root:not([data-theme="light"])[data-skin=peach] body[data-page=student]{--hero-btn-bg:initial;--hero-btn-ink:initial;--ink:#FBEBD0;--ink2:#E3C3B3;--bg:#2a1714;--card:#3b2420;--line:#5a3a33;--gold:#FEA38E;--gold-d:#FEA38E;--on-gold:#3a1410;
+  --brand:#4a2622;--brand-ink:#FFDFC3;--page-bg:linear-gradient(180deg,#3a2019 0%,#2a1714 45%,#1f100e 100%);
+  --hdr-bg:#3b2420;--hdr-edge:rgba(0,0,0,.3);--hdr-ink:#FBEBD0;--hdr-mark:#FEA38E;--hdr-mark-shadow:0 2px 0 rgba(0,0,0,.3);--hdr-line:rgba(254,163,142,.55);
+  --nav-bg:#2f1c19;--nav-ink:#E3C3B3;--nav-ink-hover:#FBEBD0;--nav-hover-bg:rgba(251,235,208,.08);--nav-edge:rgba(254,163,142,.45);--nav-bottom:rgba(251,235,208,.12);--nav-underline:#FEA38E;
+  --hero-bg:linear-gradient(135deg,#8a4a48 0%,#5a2e2c 100%);--hero-ink:#FBEBD0;--hero-ink2:#E3C3B3;--footer-bg:#1f100e;--footer-ink:#E3C3B3;}}
+html[data-skin=coffee] body[data-page=student]{--font-heading:"Montserrat";--font-body:"Cormorant Garamond";--hero-btn-bg:#E8D8C4;--hero-btn-ink:#561C24;--ink:#561C24;--ink2:#6D2932;--bg:#E8D8C4;--card:#F4EBDD;--line:#C7B7A3;--gold:#6D2932;--gold-d:#6D2932;--on-gold:#F7EEE0;
+  --brand:#561C24;--brand-ink:#E8D8C4;--page-bg:linear-gradient(180deg,#EFE3D2 0%,#E8D8C4 45%,#DCCBB4 100%);
+  --hdr-bg:#F4EBDD;--hdr-edge:rgba(86,28,36,.18);--hdr-ink:#561C24;--hdr-mark:#6D2932;--hdr-mark-shadow:none;--hdr-line:rgba(86,28,36,.35);
+  --nav-bg:#C7B7A3;--nav-ink:#561C24;--nav-ink-hover:#3b1017;--nav-hover-bg:rgba(86,28,36,.12);--nav-edge:rgba(86,28,36,.25);--nav-bottom:rgba(86,28,36,.3);--nav-underline:#561C24;
+  --hero-bg:linear-gradient(135deg,#6D2932 0%,#561C24 100%);--hero-ink:#E8D8C4;--hero-ink2:#C7B7A3;--footer-bg:#561C24;--footer-ink:#E8D8C4;
+  background:var(--bg) var(--page-bg);color:var(--ink)}
+:root[data-theme="dark"][data-skin=coffee] body[data-page=student]{--hero-btn-bg:initial;--hero-btn-ink:initial;--ink:#E8D8C4;--ink2:#C7B7A3;--bg:#2e0f14;--card:#561C24;--line:#6D2932;--gold:#C7B7A3;--gold-d:#E8D8C4;--on-gold:#2a0e12;
+  --brand:#6D2932;--brand-ink:#E8D8C4;--page-bg:linear-gradient(180deg,#3a1218 0%,#2e0f14 45%,#240a0e 100%);
+  --hdr-bg:#561C24;--hdr-edge:rgba(0,0,0,.3);--hdr-ink:#E8D8C4;--hdr-mark:#E8D8C4;--hdr-mark-shadow:0 2px 0 rgba(0,0,0,.3);--hdr-line:rgba(199,183,163,.55);
+  --nav-bg:#3f1218;--nav-ink:#C7B7A3;--nav-ink-hover:#E8D8C4;--nav-hover-bg:rgba(232,216,196,.08);--nav-edge:rgba(199,183,163,.4);--nav-bottom:rgba(232,216,196,.12);--nav-underline:#C7B7A3;
+  --hero-bg:linear-gradient(135deg,#6D2932 0%,#561C24 100%);--hero-ink:#E8D8C4;--hero-ink2:#C7B7A3;--footer-bg:#240a0e;--footer-ink:#C7B7A3;}
+@media(prefers-color-scheme:dark){:root:not([data-theme="light"])[data-skin=coffee] body[data-page=student]{--hero-btn-bg:initial;--hero-btn-ink:initial;--ink:#E8D8C4;--ink2:#C7B7A3;--bg:#2e0f14;--card:#561C24;--line:#6D2932;--gold:#C7B7A3;--gold-d:#E8D8C4;--on-gold:#2a0e12;
+  --brand:#6D2932;--brand-ink:#E8D8C4;--page-bg:linear-gradient(180deg,#3a1218 0%,#2e0f14 45%,#240a0e 100%);
+  --hdr-bg:#561C24;--hdr-edge:rgba(0,0,0,.3);--hdr-ink:#E8D8C4;--hdr-mark:#E8D8C4;--hdr-mark-shadow:0 2px 0 rgba(0,0,0,.3);--hdr-line:rgba(199,183,163,.55);
+  --nav-bg:#3f1218;--nav-ink:#C7B7A3;--nav-ink-hover:#E8D8C4;--nav-hover-bg:rgba(232,216,196,.08);--nav-edge:rgba(199,183,163,.4);--nav-bottom:rgba(232,216,196,.12);--nav-underline:#C7B7A3;
+  --hero-bg:linear-gradient(135deg,#6D2932 0%,#561C24 100%);--hero-ink:#E8D8C4;--hero-ink2:#C7B7A3;--footer-bg:#240a0e;--footer-ink:#C7B7A3;}}
+
+:root[data-skin=sage] body[data-page=student]{--font-heading:"Poppins";--font-body:"Karla";--hero-btn-bg:#0D2D20;--hero-btn-ink:#E6EEDF;--ink:#0D2D20;--ink2:#3E603F;--bg:#E6EEDF;--card:#F5F7F0;--line:#B8C9B9;--gold:#789B7F;--gold-d:#3E603F;--on-gold:#0D2D20;
+  --brand:#0D2D20;--brand-ink:#E6EEDF;--page-bg:linear-gradient(180deg,#E7EFDA 0%,#E6EEDF 48%,#DDE8D8 100%);
+  --hdr-bg:#E6EEDF;--hdr-edge:rgba(13,45,32,.14);--hdr-ink:#0D2D20;--hdr-mark:#3E603F;--hdr-mark-shadow:none;--hdr-line:rgba(13,45,32,.35);
+  --nav-bg:#B8C9B9;--nav-ink:#0D2D20;--nav-ink-hover:#0D2D20;--nav-hover-bg:rgba(13,45,32,.1);--nav-edge:rgba(13,45,32,.2);--nav-bottom:rgba(13,45,32,.25);--nav-underline:#0D2D20;
+  --hero-bg:linear-gradient(135deg,#789B7F 0%,#B8C9B9 100%);--hero-ink:#0D2D20;--hero-ink2:#24462F;--footer-bg:#0D2D20;--footer-ink:#E6EEDF;
+  background:var(--bg) var(--page-bg);color:var(--ink)}
+:root[data-theme="dark"][data-skin=sage] body[data-page=student]{--hero-btn-bg:initial;--hero-btn-ink:initial;--ink:#E6EEDF;--ink2:#B8C9B9;--bg:#15251B;--card:#20372A;--line:#3E603F;--gold:#9EBBA4;--gold-d:#B8C9B9;--on-gold:#0D2D20;
+  --brand:#20372A;--brand-ink:#E6EEDF;--page-bg:linear-gradient(180deg,#1E3325 0%,#15251B 48%,#0D1B13 100%);
+  --hdr-bg:#20372A;--hdr-edge:rgba(0,0,0,.3);--hdr-ink:#E6EEDF;--hdr-mark:#B8C9B9;--hdr-mark-shadow:0 2px 0 rgba(0,0,0,.3);--hdr-line:rgba(184,201,185,.55);
+  --nav-bg:#192D20;--nav-ink:#B8C9B9;--nav-ink-hover:#E6EEDF;--nav-hover-bg:rgba(230,238,223,.08);--nav-edge:rgba(184,201,185,.4);--nav-bottom:rgba(230,238,223,.12);--nav-underline:#B8C9B9;
+  --hero-bg:linear-gradient(135deg,#3E603F 0%,#0D2D20 100%);--hero-ink:#E6EEDF;--hero-ink2:#B8C9B9;--footer-bg:#0D1B13;--footer-ink:#B8C9B9;}
+@media(prefers-color-scheme:dark){:root:not([data-theme="light"])[data-skin=sage] body[data-page=student]{--hero-btn-bg:initial;--hero-btn-ink:initial;--ink:#E6EEDF;--ink2:#B8C9B9;--bg:#15251B;--card:#20372A;--line:#3E603F;--gold:#9EBBA4;--gold-d:#B8C9B9;--on-gold:#0D2D20;
+  --brand:#20372A;--brand-ink:#E6EEDF;--page-bg:linear-gradient(180deg,#1E3325 0%,#15251B 48%,#0D1B13 100%);
+  --hdr-bg:#20372A;--hdr-edge:rgba(0,0,0,.3);--hdr-ink:#E6EEDF;--hdr-mark:#B8C9B9;--hdr-mark-shadow:0 2px 0 rgba(0,0,0,.3);--hdr-line:rgba(184,201,185,.55);
+  --nav-bg:#192D20;--nav-ink:#B8C9B9;--nav-ink-hover:#E6EEDF;--nav-hover-bg:rgba(230,238,223,.08);--nav-edge:rgba(184,201,185,.4);--nav-bottom:rgba(230,238,223,.12);--nav-underline:#B8C9B9;
+  --hero-bg:linear-gradient(135deg,#3E603F 0%,#0D2D20 100%);--hero-ink:#E6EEDF;--hero-ink2:#B8C9B9;--footer-bg:#0D1B13;--footer-ink:#B8C9B9;}}
+
+:is(html[data-skin=peach],html[data-skin=coffee],html[data-skin=sage]) body[data-page=student] :is(.block h2,.news-item h3,.note h3,.cat-name){color:var(--ink)}
+:is(html[data-skin=peach],html[data-skin=coffee],html[data-skin=sage]) body[data-page=student] .sub{color:var(--ink2)}
+:is(html[data-skin=peach],html[data-skin=coffee],html[data-skin=sage]) body[data-page=student] header.top .brand .brand-name{color:var(--hdr-ink)}
+:is(html[data-skin=peach],html[data-skin=coffee],html[data-skin=sage]) body[data-page=student] header.top .brand .brand-mark{color:var(--hdr-mark)}
+:is(html[data-skin=peach],html[data-skin=coffee],html[data-skin=sage]) body[data-page=student] .site-nav a::after,:is(html[data-skin=peach],html[data-skin=coffee],html[data-skin=sage]) body[data-page=student] .site-nav .nav-btn::after{background:var(--nav-underline)}
+
+:is(html[data-skin=peach],html[data-skin=coffee],html[data-skin=sage]) body[data-page=student] .hero{background:var(--hero-bg);color:var(--hero-ink);border-bottom:6px solid var(--gold)}
+:is(html[data-skin=peach],html[data-skin=coffee],html[data-skin=sage]) body[data-page=student] .hero h1{color:var(--hero-ink)}
+:is(html[data-skin=peach],html[data-skin=coffee],html[data-skin=sage]) body[data-page=student] .hero p{color:var(--hero-ink2)}
+:is(html[data-skin=peach],html[data-skin=coffee],html[data-skin=sage]) body[data-page=student] .hero.has-photo h1,:is(html[data-skin=peach],html[data-skin=coffee],html[data-skin=sage]) body[data-page=student] .hero.has-photo p{color:#fff;text-shadow:0 1px 14px rgba(30,6,10,.6)}
+:is(html[data-skin=peach],html[data-skin=coffee],html[data-skin=sage]) body[data-page=student] .hero-bg::after{background:linear-gradient(90deg,rgba(40,10,16,calc(var(--hero-dim,.6) + .15)),rgba(40,10,16,calc(var(--hero-dim,.6)*.8)))}
+:root[data-skin=sage] body[data-page=student] .hero-bg::after{background:linear-gradient(90deg,rgba(13,45,32,calc(var(--hero-dim,.6) + .15)),rgba(13,45,32,calc(var(--hero-dim,.6)*.8)))}
+
+:is(html[data-skin=peach],html[data-skin=coffee],html[data-skin=sage]) body[data-page=student] .btn:not(.ghost):not(.danger):not(.ok),:is(html[data-skin=peach],html[data-skin=coffee],html[data-skin=sage]) body[data-page=student] .masthead-cta,:is(html[data-skin=peach],html[data-skin=coffee],html[data-skin=sage]) body[data-page=student] .important-badge,:is(html[data-skin=peach],html[data-skin=coffee],html[data-skin=sage]) body[data-page=student] .best-badge{color:var(--on-gold)}
+:is(html[data-skin=peach],html[data-skin=coffee],html[data-skin=sage]) body[data-page=student] .cat-chip[aria-selected=true] b{color:var(--on-gold)}
+:is(html[data-skin=peach],html[data-skin=coffee],html[data-skin=sage]) body[data-page=student] .hero .btn:not(.ghost):not(.danger):not(.ok){background:var(--hero-btn-bg,var(--gold));color:var(--hero-btn-ink,var(--on-gold))}
+:is(html[data-skin=peach],html[data-skin=coffee],html[data-skin=sage]) body[data-page=student] footer{background:var(--footer-bg);color:var(--footer-ink)}
+:is(html[data-skin=peach],html[data-skin=coffee],html[data-skin=sage]) body[data-page=student] footer a{color:var(--gold-d)}
+:is(html[data-skin=peach],html[data-skin=coffee],html[data-skin=sage]) body[data-page=student] .important-announcement-head{background:var(--brand);color:var(--brand-ink)}
+:is(html[data-skin=peach],html[data-skin=coffee],html[data-skin=sage]) body[data-page=student] .important-announcement-head h2{color:var(--brand-ink)}
+:is(html[data-skin=peach],html[data-skin=coffee],html[data-skin=sage]) body[data-page=student] .important-banner-inner{background:var(--card);color:var(--ink);border-color:var(--line);border-left-color:var(--gold)}
+:is(html[data-skin=peach],html[data-skin=coffee],html[data-skin=sage]) body[data-page=student] .important-banner-text{color:var(--ink2)}
+:is(html[data-skin=peach],html[data-skin=coffee],html[data-skin=sage]) body[data-page=student] .important-banner-img{background:var(--bg)}
+:is(html[data-skin=peach],html[data-skin=coffee],html[data-skin=sage]) body[data-page=student] .org-dialog .org-card{background:var(--card);color:var(--ink);border-color:var(--line)}
+:is(html[data-skin=peach],html[data-skin=coffee],html[data-skin=sage]) body[data-page=student] .org-dialog .org-photo,:is(html[data-skin=peach],html[data-skin=coffee],html[data-skin=sage]) body[data-page=student] .org-heading{background:var(--brand);color:var(--brand-ink)}
+:is(html[data-skin=peach],html[data-skin=coffee],html[data-skin=sage]) body[data-page=student] .theme-toggle{background:var(--brand);color:var(--brand-ink);border-color:var(--brand-ink)}
+:is(html[data-skin=peach],html[data-skin=coffee],html[data-skin=sage]) body[data-page=student] .theme-toggle:hover,:is(html[data-skin=peach],html[data-skin=coffee],html[data-skin=sage]) body[data-page=student] .theme-toggle:focus-visible{background:var(--brand);color:#fff;border-color:var(--brand-ink);filter:brightness(1.2)}
+html[data-skin=peach] body[data-page=student] :is(h1,h2,h3,.important-banner-title,.org-dialog h4,.brand){font-weight:400}
+
+/* =====================================================================
+   Super Mario theme: opt-in, html[data-skin=mario]: sky, bricks, pipes-green, coins
+   ===================================================================== */
+html[data-skin=mario] body[data-page=student]{
+  --sky:#5c94fc;--sky-ink:#0b1230;--outline:#000;--shade:#000;--field:#fff;--bgimg:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='520' height='340' shape-rendering='crispEdges'%3E%3Crect x='64' y='46' width='36' height='12' fill='%23fff'/%3E%3Crect x='52' y='58' width='60' height='12' fill='%23fff'/%3E%3Crect x='40' y='70' width='84' height='12' fill='%23fff'/%3E%3Crect x='40' y='82' width='84' height='12' fill='%23c9dcff'/%3E%3Crect x='330' y='190' width='30' height='10' fill='%23fff'/%3E%3Crect x='320' y='200' width='50' height='10' fill='%23fff'/%3E%3Crect x='310' y='210' width='70' height='10' fill='%23fff'/%3E%3Crect x='310' y='220' width='70' height='10' fill='%23c9dcff'/%3E%3C/svg%3E");
+  --bg:#fff1c7;--card:#fffdf2;--ink:#16162e;--ink2:#38386b;--line:#000;--gold:#fcc800;--gold-d:#8a5300;--red:#d82800;--green:#00a800;--radius:0px;--m-hdr-bg:#fff;--m-hdr-ink:#000;--m-hdr-mark:#d82800;--m-hdr-shadow:#fcc800;--m-hdr-border:#000;--m-nav-tint:rgba(0,0,0,0);
+  --brick:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='32' height='32' shape-rendering='crispEdges'%3E%3Crect width='32' height='32' fill='%23c84c0c'/%3E%3Cpath fill='%23fc9838' d='M0 2h15v2H0zM17 2h15v2H17zM0 17h7v2H0zM9 17h14v2H9zM25 17h7v2h-7z'/%3E%3Cpath fill='%23000' d='M0 0h32v2H0zM0 15h32v2H0zM0 30h32v2H0zM15 0h2v15h-2zM7 17h2v13H7zM23 17h2v13h-2z'/%3E%3C/svg%3E");
+  background:var(--sky) var(--bgimg);color:var(--ink);font-size:1.08rem;
+}
+:root[data-theme="dark"][data-skin=mario] body[data-page=student]{--sky:#070722;--sky-ink:#dfe4ff;--outline:#fff;--shade:#000;--field:#0a0c2e;--bgimg:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='360' height='360' shape-rendering='crispEdges'%3E%3Crect x='20' y='30' width='4' height='4' fill='%23fff'/%3E%3Crect x='90' y='150' width='4' height='4' fill='%23fff'/%3E%3Crect x='160' y='60' width='4' height='4' fill='%23fcc800'/%3E%3Crect x='230' y='210' width='4' height='4' fill='%23fff'/%3E%3Crect x='300' y='40' width='4' height='4' fill='%23fff'/%3E%3Crect x='60' y='260' width='4' height='4' fill='%23fff'/%3E%3Crect x='180' y='300' width='4' height='4' fill='%23fff'/%3E%3Crect x='320' y='170' width='4' height='4' fill='%23fcc800'/%3E%3Crect x='270' y='320' width='4' height='4' fill='%23fff'/%3E%3Crect x='120' y='220' width='4' height='4' fill='%23fff'/%3E%3Crect x='340' y='290' width='4' height='4' fill='%23fff'/%3E%3Crect x='210' y='120' width='4' height='4' fill='%23fff'/%3E%3C/svg%3E");
+  --bg:#0d1040;--card:#14184f;--ink:#fff;--ink2:#c4ccff;--line:#fff;--gold:#fcc800;--gold-d:#fcc800;--m-hdr-bg:#000;--m-hdr-ink:#fff;--m-hdr-mark:#fcc800;--m-hdr-shadow:#c84c0c;--m-hdr-border:#fff;--m-nav-tint:rgba(0,0,0,.45);}
+@media(prefers-color-scheme:dark){:root:not([data-theme="light"])[data-skin=mario] body[data-page=student]{--sky:#070722;--sky-ink:#dfe4ff;--outline:#fff;--shade:#000;--field:#0a0c2e;--bgimg:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='360' height='360' shape-rendering='crispEdges'%3E%3Crect x='20' y='30' width='4' height='4' fill='%23fff'/%3E%3Crect x='90' y='150' width='4' height='4' fill='%23fff'/%3E%3Crect x='160' y='60' width='4' height='4' fill='%23fcc800'/%3E%3Crect x='230' y='210' width='4' height='4' fill='%23fff'/%3E%3Crect x='300' y='40' width='4' height='4' fill='%23fff'/%3E%3Crect x='60' y='260' width='4' height='4' fill='%23fff'/%3E%3Crect x='180' y='300' width='4' height='4' fill='%23fff'/%3E%3Crect x='320' y='170' width='4' height='4' fill='%23fcc800'/%3E%3Crect x='270' y='320' width='4' height='4' fill='%23fff'/%3E%3Crect x='120' y='220' width='4' height='4' fill='%23fff'/%3E%3Crect x='340' y='290' width='4' height='4' fill='%23fff'/%3E%3Crect x='210' y='120' width='4' height='4' fill='%23fff'/%3E%3C/svg%3E");
+  --bg:#0d1040;--card:#14184f;--ink:#fff;--ink2:#c4ccff;--line:#fff;--gold:#fcc800;--gold-d:#fcc800;--m-hdr-bg:#000;--m-hdr-ink:#fff;--m-hdr-mark:#fcc800;--m-hdr-shadow:#c84c0c;--m-hdr-border:#fff;--m-nav-tint:rgba(0,0,0,.45);}}
+
+/* one pixel font for everything, a chunkier one for titles */
+html[data-skin=mario] body[data-page=student] *{font-family:"Pixelify Sans",system-ui,sans-serif}
+html[data-skin=mario] body[data-page=student] :is(h1,h2){font-family:"Press Start 2P",monospace;font-weight:400}
+html[data-skin=mario] body[data-page=student] h3{font-weight:700}
+
+/* ---------- HUD header ---------- */
+html[data-skin=mario] body[data-page=student] header.top{background:var(--m-hdr-bg);border-bottom:4px solid var(--m-hdr-border)}
+html[data-skin=mario] body[data-page=student] header.top .wrap{padding:14px 20px}
+html[data-skin=mario] body[data-page=student] header.top .brand{gap:18px}
+html[data-skin=mario] body[data-page=student] header.top .brand-mark{font:400 2rem/1 "Press Start 2P",monospace;letter-spacing:0;color:var(--m-hdr-mark);text-shadow:4px 4px 0 var(--m-hdr-shadow)}
+html[data-skin=mario] body[data-page=student] header.top .brand-name{padding:2px 0 2px 18px;border-left:4px solid var(--m-hdr-border);font:700 1.1rem/1.3 "Pixelify Sans",sans-serif;
+  text-transform:uppercase;letter-spacing:.14em;color:var(--m-hdr-ink)}
+html[data-skin=mario] body[data-page=student] .masthead-cta{padding:10px 16px;border:3px solid var(--m-hdr-border);border-radius:0;background:var(--gold);color:#000;
+  font:700 1rem "Pixelify Sans",sans-serif;text-transform:uppercase;letter-spacing:.06em;
+  box-shadow:inset 3px 3px 0 rgba(255,255,255,.6),inset -3px -3px 0 rgba(0,0,0,.25),4px 4px 0 #c84c0c;transition:none}
+html[data-skin=mario] body[data-page=student] .masthead-cta:hover,html[data-skin=mario] body[data-page=student] .masthead-cta:focus-visible{background:#ffdb3d;transform:translate(-1px,-1px)}
+html[data-skin=mario] body[data-page=student] .masthead-cta:active{transform:translate(3px,3px);box-shadow:inset 3px 3px 0 rgba(255,255,255,.6),inset -3px -3px 0 rgba(0,0,0,.25),0 0 0 #c84c0c}
+
+/* ---------- brick menu bar ---------- */
+html[data-skin=mario] body[data-page=student] .site-nav{background-color:#c84c0c;background-image:linear-gradient(var(--m-nav-tint),var(--m-nav-tint)),var(--brick);background-size:100% 100%,32px 32px;border:0;border-bottom:4px solid #000}
+html[data-skin=mario] body[data-page=student] .site-nav.is-stuck{box-shadow:0 5px 0 rgba(0,0,0,.35)}
+html[data-skin=mario] body[data-page=student] .site-nav .wrap{gap:2px}
+html[data-skin=mario] body[data-page=student] .site-nav a,html[data-skin=mario] body[data-page=student] .site-nav .nav-btn{
+  padding:14px 18px 14px 26px;font:700 1rem "Pixelify Sans",sans-serif;text-transform:uppercase;letter-spacing:.08em;color:#fff;text-shadow:2px 2px 0 #000;background:none}
+html[data-skin=mario] body[data-page=student] .site-nav a::after,html[data-skin=mario] body[data-page=student] .site-nav .nav-btn::after{display:none}
+html[data-skin=mario] body[data-page=student] .site-nav a::before,html[data-skin=mario] body[data-page=student] .site-nav .nav-btn::before{
+  content:"";position:absolute;left:8px;top:50%;width:0;height:0;margin-top:-6px;border-style:solid;border-width:6px 0 6px 9px;border-color:transparent transparent transparent var(--gold);opacity:0}
+html[data-skin=mario] body[data-page=student] .site-nav a:hover,html[data-skin=mario] body[data-page=student] .site-nav a:focus-visible,html[data-skin=mario] body[data-page=student] .site-nav .nav-btn:hover,html[data-skin=mario] body[data-page=student] .site-nav .nav-btn:focus-visible,html[data-skin=mario] body[data-page=student] .site-nav a[aria-current]{background:rgba(0,0,0,.4);color:var(--gold)}
+html[data-skin=mario] body[data-page=student] .site-nav a:hover::before,html[data-skin=mario] body[data-page=student] .site-nav a:focus-visible::before,html[data-skin=mario] body[data-page=student] .site-nav .nav-btn:hover::before,html[data-skin=mario] body[data-page=student] .site-nav .nav-btn:focus-visible::before,html[data-skin=mario] body[data-page=student] .site-nav a[aria-current]::before{opacity:1}
+
+/* ---------- hero: sky, hills and a grass-topped brick floor ---------- */
+html[data-skin=mario] body[data-page=student] .hero{background:transparent;border-bottom:0;padding:56px 0 132px;color:#fff}
+html[data-skin=mario] body[data-page=student] .hero h1{font:400 clamp(1.1rem,3.9vw,2.1rem)/1.6 "Press Start 2P",monospace;max-width:19ch;color:#fff;text-shadow:4px 4px 0 #000;letter-spacing:0}
+html[data-skin=mario] body[data-page=student] .hero p,html[data-skin=mario] body[data-page=student] .hero.has-photo p{max-width:46ch;font-size:1.3rem;line-height:1.4;color:#fff;text-shadow:2px 2px 0 #000}
+html[data-skin=mario] body[data-page=student] .hero::before{content:"";position:absolute;left:0;right:0;bottom:48px;height:96px;pointer-events:none;
+  background:
+    radial-gradient(ellipse 150px 92px at 12% 100%,#00a800 0 92%,#000 92% 100%,transparent 100%),
+    radial-gradient(ellipse 100px 62px at 80% 100%,#00a800 0 90%,#000 90% 100%,transparent 100%),
+    radial-gradient(ellipse 60px 38px at 92% 100%,#80d010 0 88%,#000 88% 100%,transparent 100%)}
+html[data-skin=mario] body[data-page=student] .hero::after{content:"";position:absolute;left:0;right:0;bottom:0;height:48px;pointer-events:none;
+  background-image:linear-gradient(#000 0 3px,#80d010 3px 7px,#00a800 7px 16px,#000 16px 19px),var(--brick);
+  background-repeat:no-repeat,repeat-x;background-position:0 0,0 19px;background-size:100% 19px,32px 32px}
+html[data-skin=mario] body[data-page=student] .hero.has-photo .hero-bg::after{background:rgba(5,12,40,calc(var(--hero-dim,.6) + .1))}
+
+/* ---------- section titles ---------- */
+html[data-skin=mario] body[data-page=student] .block h2{font:400 clamp(.95rem,2.6vw,1.45rem)/1.5 "Press Start 2P",monospace;color:#fff;text-shadow:3px 3px 0 #000;margin-bottom:.9em}
+html[data-skin=mario] body[data-page=student] .sub{color:var(--sky-ink);font-size:1.2rem;line-height:1.35}
+html[data-skin=mario] body[data-page=student] .cat-name{color:var(--sky-ink);font-weight:700}
+
+/* ---------- blocks, boxes and panels ---------- */
+html[data-skin=mario] body[data-page=student] :is(.news-item,.note,.panel,.gallery figure,.contact-card,.phone-card,.best-card,.org-card,.important-banner-inner,.confirm-dialog,.gate-card,.important-announcement-card){
+  border:3px solid var(--outline);border-radius:0;box-shadow:5px 5px 0 var(--shade);background:var(--card);color:var(--ink)}
+html[data-skin=mario] body[data-page=student] .news-item{border-left:12px solid var(--gold)}
+html[data-skin=mario] body[data-page=student] .org-card{border-top:10px solid var(--gold)}
+html[data-skin=mario] body[data-page=student] .org-card:hover,html[data-skin=mario] body[data-page=student] .org-card:focus-visible{border-color:var(--outline);transform:translate(-2px,-2px);box-shadow:7px 7px 0 var(--shade)}
+html[data-skin=mario] body[data-page=student] .org-photo{border-radius:0;border:3px solid var(--outline)}
+html[data-skin=mario] body[data-page=student] :is(.news-item img,.gallery img,.important-banner-img,.news-image-grid img){border-radius:0}
+html[data-skin=mario] body[data-page=student] .important-banner-inner{border-left:12px solid var(--red);color:var(--ink)}
+html[data-skin=mario] body[data-page=student] .important-banner-inner:hover{transform:translate(-2px,-2px);box-shadow:7px 7px 0 var(--shade)}
+html[data-skin=mario] body[data-page=student] .important-banner-title{font-weight:700;text-transform:uppercase;letter-spacing:.02em}
+html[data-skin=mario] body[data-page=student] .important-banner-text{color:var(--ink2);font-size:1.15rem}
+html[data-skin=mario] body[data-page=student] :is(.important-badge,.course-tag,.badge){border-radius:0;font-weight:700;text-transform:uppercase;letter-spacing:.04em}
+html[data-skin=mario] body[data-page=student] .important-badge{background:var(--gold);color:#000;border:2px solid #000}
+
+/* ---------- pressable buttons ---------- */
+html[data-skin=mario] body[data-page=student] .btn{padding:10px 18px;border:3px solid var(--outline);border-radius:0;background:var(--red);color:#fff;
+  font:700 1rem "Pixelify Sans",sans-serif;text-transform:uppercase;letter-spacing:.06em;text-shadow:2px 2px 0 rgba(0,0,0,.45);
+  box-shadow:inset 3px 3px 0 rgba(255,255,255,.35),inset -3px -3px 0 rgba(0,0,0,.28),4px 4px 0 var(--shade);transition:none}
+html[data-skin=mario] body[data-page=student] .btn:hover{filter:none;transform:translate(-1px,-1px)}
+html[data-skin=mario] body[data-page=student] .btn:active{transform:translate(3px,3px);box-shadow:inset 3px 3px 0 rgba(255,255,255,.35),inset -3px -3px 0 rgba(0,0,0,.28),0 0 0 var(--shade)}
+html[data-skin=mario] body[data-page=student] .btn.ghost{background:var(--card);color:var(--ink);text-shadow:none;border:3px solid var(--outline)}
+html[data-skin=mario] body[data-page=student] .btn.danger{background:#7a1200}
+html[data-skin=mario] body[data-page=student] .btn.ok{background:var(--green)}
+
+/* ---------- filter chips, course tabs, reactions ---------- */
+html[data-skin=mario] body[data-page=student] :is(.message-filters button,.cat-chip,.rx){
+  border:3px solid var(--outline);border-radius:0;background:var(--card);color:var(--ink);
+  font:700 .98rem "Pixelify Sans",sans-serif;text-transform:uppercase;letter-spacing:.03em;box-shadow:3px 3px 0 var(--shade)}
+html[data-skin=mario] body[data-page=student] :is(.message-filters button,.cat-chip,.rx):hover{border-color:var(--outline);background:#ffe27a;color:#000}
+html[data-skin=mario] body[data-page=student] :is(.message-filters button[aria-pressed=true],.cat-chip[aria-selected=true]){background:var(--red);color:#fff;border-color:var(--outline);transform:translate(2px,2px);box-shadow:1px 1px 0 var(--shade)}
+html[data-skin=mario] body[data-page=student] .cat-chip b{border-radius:0;background:#000;color:#fff}
+html[data-skin=mario] body[data-page=student] .cat-chip[aria-selected=true] b{background:var(--gold);color:#000}
+html[data-skin=mario] body[data-page=student] .rx.on{background:var(--gold);color:#000;border-color:var(--outline)}
+
+/* ---------- form fields ---------- */
+html[data-skin=mario] body[data-page=student] :is(input[type=text],input[type=email],input[type=password],input[type=url],textarea,select){
+  border:3px solid var(--outline);border-radius:0;background:var(--field);color:var(--ink);font:1.12rem "Pixelify Sans",sans-serif}
+html[data-skin=mario] body[data-page=student] :is(input,textarea,select):focus{outline:3px solid var(--gold);outline-offset:0}
+html[data-skin=mario] body[data-page=student] label{font-weight:700;text-transform:uppercase;letter-spacing:.04em;font-size:.95rem}
+html[data-skin=mario] body[data-page=student] .confirm-dialog blockquote{border-radius:0;border-left:8px solid var(--gold);background:var(--bg)}
+
+/* ---------- brick floor footer ---------- */
+html[data-skin=mario] body[data-page=student] footer{background:#c84c0c var(--brick);background-size:32px 32px;border-top:8px solid #00a800;box-shadow:0 -4px 0 #000;color:#fff;text-shadow:2px 2px 0 #000;padding:34px 0 40px;font-size:1.1rem}
+html[data-skin=mario] body[data-page=student] footer a{color:var(--gold)}
+
+/* ---------- floating light/dark block ---------- */
+html[data-skin=mario] body[data-page=student] .theme-toggle{border:3px solid var(--outline);border-radius:0;background:var(--gold);color:#000;
+  box-shadow:inset 3px 3px 0 rgba(255,255,255,.6),inset -3px -3px 0 rgba(0,0,0,.25),4px 4px 0 var(--shade)}
+html[data-skin=mario] body[data-page=student] .theme-toggle:hover,html[data-skin=mario] body[data-page=student] .theme-toggle:focus-visible{background:#ffdb3d;color:#000;border-color:var(--outline);transform:translate(-1px,-1px)}
+html[data-skin=mario] body[data-page=student] .theme-toggle:active{transform:translate(3px,3px);box-shadow:inset 3px 3px 0 rgba(255,255,255,.6),inset -3px -3px 0 rgba(0,0,0,.25),0 0 0 var(--shade)}
+
+/* ---------- phones ---------- */
+@media(max-width:700px){
+  html[data-skin=mario] body[data-page=student] header.top .wrap{padding:12px 14px}
+  html[data-skin=mario] body[data-page=student] header.top .brand{gap:10px}
+  html[data-skin=mario] body[data-page=student] header.top .brand-mark{font-size:1.15rem;text-shadow:3px 3px 0 var(--m-hdr-shadow)}
+  html[data-skin=mario] body[data-page=student] header.top .brand-name{padding-left:10px;border-left-width:3px;font-size:.8rem;letter-spacing:.08em}
+  html[data-skin=mario] body[data-page=student] .masthead-cta{padding:7px 10px;font-size:.82rem;border-width:2px;box-shadow:inset 2px 2px 0 rgba(255,255,255,.6),inset -2px -2px 0 rgba(0,0,0,.25),3px 3px 0 #c84c0c}
+  html[data-skin=mario] body[data-page=student] .site-nav .wrap{padding:0 2px}
+  html[data-skin=mario] body[data-page=student] .site-nav a,html[data-skin=mario] body[data-page=student] .site-nav .nav-btn{padding:12px 6px 12px 17px;font-size:.78rem;letter-spacing:.03em}
+  html[data-skin=mario] body[data-page=student] .site-nav a::before,html[data-skin=mario] body[data-page=student] .site-nav .nav-btn::before{left:4px;margin-top:-5px;border-width:5px 0 5px 7px}
+  html[data-skin=mario] body[data-page=student] .hero{padding:40px 0 118px}
+  html[data-skin=mario] body[data-page=student] .hero::before{height:78px}
+  html[data-skin=mario] body[data-page=student] .hero p,html[data-skin=mario] body[data-page=student] .hero.has-photo p{font-size:1.15rem}
+  html[data-skin=mario] body[data-page=student] :is(.news-item,.note,.panel,.gallery figure,.contact-card,.phone-card,.best-card,.org-card,.important-banner-inner){box-shadow:4px 4px 0 var(--shade)}
+}
+@media(max-width:400px){
+  html[data-skin=mario] body[data-page=student] header.top .brand-mark{font-size:1rem}
+  html[data-skin=mario] body[data-page=student] header.top .brand-name{font-size:.72rem}
+  html[data-skin=mario] body[data-page=student] .site-nav a,html[data-skin=mario] body[data-page=student] .site-nav .nav-btn{padding:12px 4px 12px 14px;font-size:.7rem}
+}
+@media(prefers-reduced-motion:reduce){html[data-skin=mario] body[data-page=student] *{transition:none!important}}

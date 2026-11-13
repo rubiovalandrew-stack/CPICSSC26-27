@@ -6,6 +6,7 @@
 <title>CPIC Supreme Student Council Admin</title>
 <meta name="robots" content="noindex">
 <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@700;800&family=Source+Sans+3:wght@400;600;700&display=swap" rel="stylesheet">
+<script>try{var t=localStorage.getItem("cpic-theme");if(t==="dark"||t==="light")document.documentElement.dataset.theme=t}catch(e){}</script>
 <link rel="stylesheet" href="style.css">
 </head>
 <body data-page="admin">
@@ -37,6 +38,7 @@
       <button role="tab" aria-selected="false" data-tab="tImportant">Announcement</button>
       <button role="tab" aria-selected="false" data-tab="tImg">Images</button>
       <button role="tab" aria-selected="false" data-tab="tHero">Hero photo</button>
+      <button role="tab" aria-selected="false" data-tab="tTheme">Site theme</button>
       <button role="tab" aria-selected="false" data-tab="tOfficers">SSC Officers</button>
       <button role="tab" aria-selected="false" data-tab="tContact">Contact us</button>
     </div>
@@ -183,6 +185,45 @@
       </div>
     </div>
 
+    <div class="tabpane hidden" id="tTheme">
+      <div class="panel">
+        <h2>Site theme</h2>
+        <p class="sub">Choose the look students see on the main page. It changes right away for everyone. Students can still switch between light and dark mode themselves.</p>
+        <div class="skin-options" role="group" aria-label="Choose the site theme">
+          <button type="button" class="skin-option" data-skin-choice="basic" aria-pressed="true">
+            <span class="skin-swatch basic" aria-hidden="true"></span>
+            <strong>Basic theme</strong>
+            <span class="d">The clean navy-and-gold college look.</span>
+            <span class="tag">In use</span>
+          </button>
+          <button type="button" class="skin-option" data-skin-choice="mario" aria-pressed="false">
+            <span class="skin-swatch mario" aria-hidden="true"></span>
+            <strong>Super Mario theme</strong>
+            <span class="d">Retro 8-bit look with pixel fonts, bricks and a sky.</span>
+            <span class="tag">In use</span>
+          </button>
+          <button type="button" class="skin-option" data-skin-choice="peach" aria-pressed="false">
+            <span class="skin-swatch peach" aria-hidden="true"></span>
+            <strong>Peach theme</strong>
+            <span class="d">Soft peach, coral and pink. Warm and friendly.</span>
+            <span class="tag">In use</span>
+          </button>
+          <button type="button" class="skin-option" data-skin-choice="coffee" aria-pressed="false">
+            <span class="skin-swatch coffee" aria-hidden="true"></span>
+            <strong>Coffee theme</strong>
+            <span class="d">Deep burgundy and cream. Classic and elegant.</span>
+            <span class="tag">In use</span>
+          </button>
+          <button type="button" class="skin-option" data-skin-choice="sage" aria-pressed="false">
+            <span class="skin-swatch sage" aria-hidden="true"></span>
+            <strong>Sage theme</strong>
+            <span class="d">Forest green, soft sage and pale green.</span>
+            <span class="tag">In use</span>
+          </button>
+        </div>
+      </div>
+    </div>
+
     <div class="tabpane hidden" id="tContact">
       <div class="admin-grid two">
         <div class="contact-admin-forms">
@@ -272,6 +313,10 @@
     </div>
   </form>
 </dialog>
+<button type="button" class="theme-toggle" id="themeToggle" aria-label="Switch to dark mode" title="Switch to dark mode" data-mode="light">
+      <svg class="i-moon" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M20.7 14.4A8.5 8.5 0 0 1 9.6 3.3a.8.8 0 0 0-1-1A10.2 10.2 0 1 0 21.7 15.4a.8.8 0 0 0-1-1z"/></svg>
+      <svg class="i-sun" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4.2" fill="currentColor"/><path stroke="currentColor" stroke-width="2" stroke-linecap="round" d="M12 2.5v2.2M12 19.3v2.2M2.5 12h2.2M19.3 12h2.2M5.3 5.3l1.6 1.6M17.1 17.1l1.6 1.6M18.7 5.3l-1.6 1.6M6.9 17.1l-1.6 1.6"/></svg>
+    </button>
 <script type="module" src="app.js"></script>
 </body>
 </html>

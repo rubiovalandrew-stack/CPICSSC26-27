@@ -5,7 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>CPIC Supreme Student Council</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@700;800&family=Crimson+Pro:wght@600;700&family=Source+Sans+3:wght@400;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@700;800&family=Crimson+Pro:wght@600;700&family=Source+Sans+3:wght@400;600;700&family=Pixelify+Sans:wght@400;600;700&family=Press+Start+2P&family=Pacifico&family=Nunito+Sans:wght@400;600;700&family=Montserrat:wght@400;500;600;700;800&family=Cormorant+Garamond:wght@400;500;600;700&family=Poppins:wght@400;500;600;700&family=Karla:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script>try{var d=document.documentElement,t=localStorage.getItem("cpic-theme"),s=localStorage.getItem("cpic-skin");if(t==="dark"||t==="light")d.dataset.theme=t;if(["basic","mario","peach","coffee","sage"].includes(s))d.dataset.skin=s}catch(e){}</script>
 <link rel="stylesheet" href="style.css">
 </head>
 <body data-page="student">
@@ -148,6 +149,10 @@
 
 
 <footer><div class="wrap">© CPIC Supreme Student Council · <a href="admin.html">Admin login</a></div></footer>
+<button type="button" class="theme-toggle" id="themeToggle" aria-label="Switch to dark mode" title="Switch to dark mode" data-mode="light">
+      <svg class="i-moon" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M20.7 14.4A8.5 8.5 0 0 1 9.6 3.3a.8.8 0 0 0-1-1A10.2 10.2 0 1 0 21.7 15.4a.8.8 0 0 0-1-1z"/></svg>
+      <svg class="i-sun" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4.2" fill="currentColor"/><path stroke="currentColor" stroke-width="2" stroke-linecap="round" d="M12 2.5v2.2M12 19.3v2.2M2.5 12h2.2M19.3 12h2.2M5.3 5.3l1.6 1.6M17.1 17.1l1.6 1.6M18.7 5.3l-1.6 1.6M6.9 17.1l-1.6 1.6"/></svg>
+    </button>
 <script type="module" src="app.js"></script>
 </body>
 </html>

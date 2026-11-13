@@ -15,6 +15,9 @@ const NEW_DAYS = 7;       // only news newer than this triggers the lock
 const MESSAGE_LIMIT = 3000;
 const MESSAGE_GROW_LIMIT = 1000;
 const MAX_IMAGES_PER_COURSE = 6;
+const SITE_SKINS = new Set(["basic", "mario", "peach", "coffee", "sage"]);
+const SITE_SKIN_LABELS = { basic: "Basic theme", mario: "Super Mario theme", peach: "Peach theme", coffee: "Coffee theme", sage: "Sage theme" };
+const normalizeSiteSkin = skin => SITE_SKINS.has(skin) ? skin : "basic";
 
 /* Campus Moments categories */
 const COURSES = [
@@ -134,6 +137,7 @@ const state = {
   contact: { qrCodes: [], phoneNumbers: [] },
   importantAnnouncement: null,
   heroBackground: null,
+  siteTheme: null,
   newsPopupSettings: { lockSeconds: LOCK_SECONDS }
 };
 const loaded = new Set();
@@ -600,13 +604,32 @@ function initStudent() {
   };
   watchDocument("importantAnnouncement", doc(fs, "siteContent", "importantAnnouncement"), renderImportantAnnouncement, null);
   watchDocument("newsPopupSettings", doc(fs, "siteContent", "newsPopupSettings"), checkGate, { lockSeconds: LOCK_SECONDS });
+  /* Site theme chosen by the admin. */
+  const applySkin = () => {
+    const skin = normalizeSiteSkin(state.siteTheme && state.siteTheme.skin);
+    document.documentElement.dataset.skin = skin;
+    try { localStorage.setItem("cpic-skin", skin); } catch (err) { /* ignore */ }
+  };
+  watchDocument("siteTheme", doc(fs, "siteContent", "theme"), applySkin, null);
+
   /* Hero photo: set by the admin, fades out as the student scrolls down. */
-  const heroEl = $("#hero"), heroBg = $("#heroBg"), headerEl = $("header.top");
+  const heroEl = $("#hero"), heroBg = $("#heroBg"), navEl = $(".site-nav");
+  // Highlight the menu link of the section currently on screen.
+  const spyLinks = [...document.querySelectorAll('.site-nav a[href^="#"]')];
+  const spyTargets = spyLinks.map(a => { const t = document.querySelector(a.getAttribute("href")); return t && (t.closest("section") || t); });
+  if ("IntersectionObserver" in window) {
+    const spy = new IntersectionObserver(entries => entries.forEach(en => {
+      if (!en.isIntersecting) return;
+      spyLinks.forEach((a, i) => spyTargets[i] === en.target ? a.setAttribute("aria-current", "true") : a.removeAttribute("aria-current"));
+    }), { rootMargin: "-40% 0px -55% 0px" });
+    spyTargets.forEach(t => t && spy.observe(t));
+  }
   let scrollTick = false;
   const updateOnScroll = () => {
     scrollTick = false;
     const y = window.scrollY;
-    headerEl.classList.toggle("is-scrolled", y > 8);
+    navEl.classList.toggle("is-stuck", navEl.getBoundingClientRect().top <= 0);
+    if (y < 120) spyLinks.forEach(a => a.removeAttribute("aria-current"));
     if (!heroEl.classList.contains("has-photo")) return;
     const fade = Math.min(1, Math.max(0, y / ((heroEl.offsetHeight || 1) * 0.65)));
     heroEl.style.setProperty("--hero-fade", String(1 - fade));
@@ -939,6 +962,24 @@ function initAdmin() {
     renderAdmin();
   });
 
+  /* Site theme picker */
+  const skinButtons = [...document.querySelectorAll("[data-skin-choice]")];
+  const renderThemeAdmin = () => {
+    const current = normalizeSiteSkin(state.siteTheme && state.siteTheme.skin);
+    skinButtons.forEach(b => b.setAttribute("aria-pressed", String(b.dataset.skinChoice === current)));
+  };
+  skinButtons.forEach(b => b.addEventListener("click", async () => {
+    const skin = normalizeSiteSkin(b.dataset.skinChoice);
+    skinButtons.forEach(x => x.disabled = true);
+    try {
+      await setDoc(doc(fs, "siteContent", "theme"), { skin, updatedAt: Date.now() });
+      toast(`${SITE_SKIN_LABELS[skin]} is now live.`);
+    } catch (err) {
+      console.error("Could not save the theme:", err);
+      toast("Could not change the theme. Check your connection and that you are logged in.");
+    } finally { skinButtons.forEach(x => x.disabled = false); }
+  }));
+
   /* Hero background photo */
   const heroForm = $("#heroForm"), heroFile = $("#heroImage"), heroDim = $("#heroDim"), heroPreview = $("#heroPreview");
   let heroPending = null; // compressed data URL chosen but not saved yet
@@ -1001,6 +1042,7 @@ function initAdmin() {
       watch("comments", collection(fs, "comments"), renderAdmin),
       watchDocument("contact", doc(fs, "siteContent", "contact"), renderContactAdmin),
       watchDocument("heroBackground", doc(fs, "siteContent", "heroBackground"), renderHeroAdmin, null),
+      watchDocument("siteTheme", doc(fs, "siteContent", "theme"), renderThemeAdmin, null),
       watchDocument("importantAnnouncement", doc(fs, "siteContent", "importantAnnouncement"), renderImportantAdmin, null),
       watchDocument("newsPopupSettings", doc(fs, "siteContent", "newsPopupSettings"), renderNewsPopupSettings, { lockSeconds: LOCK_SECONDS })
     );
@@ -1709,5 +1751,25 @@ function enhanceFileInputs() {
   });
 }
 enhanceFileInputs();
+function initThemeToggle() {
+  if (!document.getElementById("themeToggle")) return;
+  /* Light / dark toggle. Follows the device setting until the visitor picks one. */
+  const themeBtn = $("#themeToggle"), root = document.documentElement, darkQuery = window.matchMedia("(prefers-color-scheme: dark)");
+  const isDark = () => root.dataset.theme ? root.dataset.theme === "dark" : darkQuery.matches;
+  const paintTheme = () => {
+    const label = isDark() ? "Switch to light mode" : "Switch to dark mode";
+    themeBtn.setAttribute("aria-label", label); themeBtn.title = label; themeBtn.dataset.mode = isDark() ? "dark" : "light";
+  };
+  themeBtn.addEventListener("click", () => {
+    const next = isDark() ? "light" : "dark";
+    root.dataset.theme = next;
+    try { localStorage.setItem("cpic-theme", next); } catch (err) { /* private mode: choice just won't persist */ }
+    paintTheme();
+  });
+  if (darkQuery.addEventListener) darkQuery.addEventListener("change", paintTheme);
+  paintTheme();
+}
+initThemeToggle();
+
 if (page === "student") initStudent();
 if (page === "admin") initAdmin();

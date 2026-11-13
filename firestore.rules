@@ -62,6 +62,12 @@ service cloud.firestore {
       allow create, update, delete: if isAdmin();
     }
 
+    // Which look the student page uses ('basic' or 'mario'). Admin only writes.
+    match /siteContent/theme {
+      allow read: if true;
+      allow create, update, delete: if isAdmin();
+    }
+
     // Photo behind the hero section on the student page.
     match /siteContent/heroBackground {
       allow read: if true;
