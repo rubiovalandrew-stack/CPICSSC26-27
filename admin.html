@@ -36,6 +36,7 @@
       <button role="tab" aria-selected="false" data-tab="tNews">News</button>
       <button role="tab" aria-selected="false" data-tab="tImportant">Announcement</button>
       <button role="tab" aria-selected="false" data-tab="tImg">Images</button>
+      <button role="tab" aria-selected="false" data-tab="tHero">Hero photo</button>
       <button role="tab" aria-selected="false" data-tab="tOfficers">SSC Officers</button>
       <button role="tab" aria-selected="false" data-tab="tContact">Contact us</button>
     </div>
@@ -157,6 +158,28 @@
           <h2 style="margin-top:28px">Daily top photos (saved)</h2>
           <p class="meta" id="dailyWinnersNote"></p>
           <div id="dailyWinners"></div></div>
+      </div>
+    </div>
+
+    <div class="tabpane hidden" id="tHero">
+      <div class="admin-grid two">
+        <form class="panel" id="heroForm">
+          <h2>Hero background photo</h2>
+          <p class="sub">This photo sits behind the title at the top of the student page and fades away as students scroll down. Wide, landscape photos work best. We resize it for you.</p>
+          <label for="heroImage">Photo</label>
+          <input type="file" id="heroImage" accept="image/*">
+          <label for="heroDim">Darkness over the photo: <span id="heroDimValue">60%</span></label>
+          <input type="range" id="heroDim" min="20" max="90" step="5" value="60">
+          <p class="meta">Increase this if the white title is hard to read on your photo.</p>
+          <div class="important-admin-actions">
+            <button class="btn" type="submit" id="saveHero">Save hero photo</button>
+            <button class="btn danger hidden" type="button" id="removeHero">Remove photo</button>
+          </div>
+        </form>
+        <section>
+          <h2>Preview</h2>
+          <div class="hero-admin-preview" id="heroPreview"><span class="empty">No hero photo yet. The hero shows the plain navy background.</span></div>
+        </section>
       </div>
     </div>
 

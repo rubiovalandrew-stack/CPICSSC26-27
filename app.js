@@ -133,6 +133,7 @@ const state = {
   news: [], images: [], imageSubmissions: [], messages: [], comments: [], dailyBest: [], officers: [],
   contact: { qrCodes: [], phoneNumbers: [] },
   importantAnnouncement: null,
+  heroBackground: null,
   newsPopupSettings: { lockSeconds: LOCK_SECONDS }
 };
 const loaded = new Set();
@@ -150,7 +151,9 @@ function watchDocument(name, reference, render, fallback = { qrCodes: [], phoneN
     render();
   }, err => {
     console.error(err);
-    const message = name === "importantAnnouncement"
+    const message = name === "heroBackground"
+      ? "Could not load the hero photo. Check your connection."
+      : name === "importantAnnouncement"
       ? "Could not load the important announcement. Check your connection."
       : name === "newsPopupSettings"
         ? "Could not load the news pop-up timer. Check your connection."
@@ -597,6 +600,34 @@ function initStudent() {
   };
   watchDocument("importantAnnouncement", doc(fs, "siteContent", "importantAnnouncement"), renderImportantAnnouncement, null);
   watchDocument("newsPopupSettings", doc(fs, "siteContent", "newsPopupSettings"), checkGate, { lockSeconds: LOCK_SECONDS });
+  /* Hero photo: set by the admin, fades out as the student scrolls down. */
+  const heroEl = $("#hero"), heroBg = $("#heroBg"), headerEl = $("header.top");
+  let scrollTick = false;
+  const updateOnScroll = () => {
+    scrollTick = false;
+    const y = window.scrollY;
+    headerEl.classList.toggle("is-scrolled", y > 8);
+    if (!heroEl.classList.contains("has-photo")) return;
+    const fade = Math.min(1, Math.max(0, y / ((heroEl.offsetHeight || 1) * 0.65)));
+    heroEl.style.setProperty("--hero-fade", String(1 - fade));
+    heroEl.style.setProperty("--hero-shift", Math.min(60, Math.round(y * 0.25)) + "px");
+  };
+  const renderHeroBackground = () => {
+    const h = state.heroBackground;
+    if (h && typeof h.src === "string" && h.src.startsWith("data:image/")) {
+      heroBg.style.backgroundImage = `url("${h.src}")`;
+      heroEl.style.setProperty("--hero-dim", String((Number(h.dim) || 60) / 100));
+      heroEl.classList.add("has-photo");
+    } else {
+      heroBg.style.backgroundImage = "";
+      heroEl.classList.remove("has-photo");
+    }
+    updateOnScroll();
+  };
+  window.addEventListener("scroll", () => { if (!scrollTick) { scrollTick = true; requestAnimationFrame(updateOnScroll); } }, { passive: true });
+  window.addEventListener("resize", updateOnScroll);
+  watchDocument("heroBackground", doc(fs, "siteContent", "heroBackground"), renderHeroBackground, null);
+  updateOnScroll();
   let lastSig = "";
   const liveSig = () => [...state.news, ...state.messages].filter(isLive).map(i => i.id).join();
   const renderNews = () => {
@@ -908,6 +939,53 @@ function initAdmin() {
     renderAdmin();
   });
 
+  /* Hero background photo */
+  const heroForm = $("#heroForm"), heroFile = $("#heroImage"), heroDim = $("#heroDim"), heroPreview = $("#heroPreview");
+  let heroPending = null; // compressed data URL chosen but not saved yet
+  const paintHeroPreview = () => {
+    const src = heroPending || (state.heroBackground && state.heroBackground.src);
+    $("#heroDimValue").textContent = heroDim.value + "%";
+    $("#removeHero").classList.toggle("hidden", !(state.heroBackground && state.heroBackground.src));
+    if (!src || !src.startsWith("data:image/")) {
+      heroPreview.style.backgroundImage = "";
+      heroPreview.innerHTML = '<span class="empty">No hero photo yet. The hero shows the plain navy background.</span>';
+      return;
+    }
+    heroPreview.innerHTML = '<span class="hero-admin-preview-title">What\'s happening at CPIC Supreme Student Council</span>';
+    heroPreview.style.backgroundImage = `linear-gradient(90deg,rgba(11,27,58,${heroDim.value / 100}),rgba(11,27,58,${heroDim.value / 100 * 0.6})),url("${src}")`;
+  };
+  const renderHeroAdmin = () => {
+    if (state.heroBackground && !heroPending) heroDim.value = String(state.heroBackground.dim || 60);
+    paintHeroPreview();
+  };
+  heroDim.addEventListener("input", paintHeroPreview);
+  heroFile.addEventListener("change", async () => {
+    const file = heroFile.files[0];
+    if (!file) { heroPending = null; return paintHeroPreview(); }
+    try { heroPending = await compress(file, 1600); paintHeroPreview(); }
+    catch (err) { console.error(err); heroPending = null; heroFile.value = ""; toast("That photo could not be processed. Try a different one."); }
+  });
+  heroForm.addEventListener("submit", async e => {
+    e.preventDefault();
+    const current = state.heroBackground && state.heroBackground.src;
+    const src = heroPending || current;
+    if (!src) return toast("Choose a photo first.");
+    const button = $("#saveHero"); button.disabled = true;
+    try {
+      await setDoc(doc(fs, "siteContent", "heroBackground"), { src, dim: Number(heroDim.value), updatedAt: Date.now() });
+      heroPending = null; heroFile.value = "";
+      toast("Hero photo saved.");
+    } catch (err) {
+      console.error("Could not save hero photo:", err);
+      toast("Could not save the photo. Check your connection and that you are logged in.");
+    } finally { button.disabled = false; }
+  });
+  $("#removeHero").addEventListener("click", async () => {
+    if (!confirm("Remove the hero photo?")) return;
+    try { await deleteDoc(doc(fs, "siteContent", "heroBackground")); heroPending = null; heroFile.value = ""; toast("Hero photo removed."); }
+    catch (err) { console.error(err); toast("Could not remove the photo."); }
+  });
+
   onAuthStateChanged(auth, user => {
     unsubs.forEach(u => u()); unsubs = []; loaded.clear();
     loginBox.classList.toggle("hidden", !!user);
@@ -922,6 +1000,7 @@ function initAdmin() {
       watch("messages", collection(fs, "messages"), renderAdmin),
       watch("comments", collection(fs, "comments"), renderAdmin),
       watchDocument("contact", doc(fs, "siteContent", "contact"), renderContactAdmin),
+      watchDocument("heroBackground", doc(fs, "siteContent", "heroBackground"), renderHeroAdmin, null),
       watchDocument("importantAnnouncement", doc(fs, "siteContent", "importantAnnouncement"), renderImportantAdmin, null),
       watchDocument("newsPopupSettings", doc(fs, "siteContent", "newsPopupSettings"), renderNewsPopupSettings, { lockSeconds: LOCK_SECONDS })
     );

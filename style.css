@@ -489,3 +489,68 @@ body[data-page=student] header.top nav .nav-btn:hover,body[data-page=student] he
 
 .platform.tiktok{background:#010101;color:#fff}.platform.youtube{background:#e02424;color:#fff}
 .org-dialog .officer-qr{margin-top:2px}
+
+/* serif headings to match the header */
+body[data-page=student] .hero h1,
+body[data-page=student] .block h2{font-family:"Crimson Pro",Georgia,serif;font-weight:700;letter-spacing:0}
+body[data-page=student] .hero h1{font-size:clamp(2.2rem,5.4vw,3.7rem);line-height:1.08}
+
+/* ===== Hero photo + header polish ===== */
+.hero{position:relative;overflow:hidden}
+.hero .wrap{position:relative;z-index:1}
+.hero-bg{position:absolute;top:-60px;right:0;bottom:0;left:0;z-index:0;display:none;background-size:cover;background-position:center;
+  opacity:var(--hero-fade,1);transform:translateY(var(--hero-shift,0px));will-change:opacity,transform}
+.hero-bg::after{content:"";position:absolute;inset:0;
+  background:linear-gradient(90deg,rgba(11,27,58,var(--hero-dim,.6)),rgba(11,27,58,calc(var(--hero-dim,.6)*.6)))}
+.hero.has-photo .hero-bg{display:block}
+.hero.has-photo h1,.hero.has-photo p{text-shadow:0 1px 14px rgba(5,12,30,.45)}
+@media(prefers-reduced-motion:reduce){.hero-bg{transform:none!important}}
+.hero-admin-preview{display:flex;align-items:center;min-height:180px;padding:24px;border-radius:8px;border:1px solid var(--line);background:#12264a center/cover no-repeat;color:#fff}
+.hero-admin-preview .empty{color:var(--ink2)}
+.hero-admin-preview-title{font:700 clamp(1.3rem,3vw,1.9rem)/1.15 "Crimson Pro",Georgia,serif;max-width:16ch;text-shadow:0 1px 10px rgba(5,12,30,.5)}
+#heroDim{width:100%;margin:6px 0 4px}
+
+/* ===== Masthead + sticky menu bar (student page) ===== */
+body[data-page=student] header.top{position:static;background:#0f2347;border:0;box-shadow:none}
+body[data-page=student] header.top .wrap{flex-direction:row;flex-wrap:nowrap;justify-content:space-between;align-items:center;gap:20px;padding:18px 20px}
+body[data-page=student] header.top .brand{display:flex;align-items:center;gap:16px;min-width:0}
+body[data-page=student] header.top .brand-mark{
+  flex:none;display:grid;place-items:center;width:56px;height:56px;border-radius:50%;
+  border:2px solid var(--gold);background:#0f2347;box-shadow:0 0 0 3px #0f2347,0 0 0 4px rgba(232,163,23,.55);
+  color:#f4d58a;font:700 1rem "Crimson Pro",Georgia,serif;letter-spacing:.06em}
+body[data-page=student] header.top .brand-name{
+  padding-left:16px;border-left:1px solid rgba(232,163,23,.55);
+  font:700 1.65rem/1.1 "Crimson Pro",Georgia,serif;letter-spacing:.005em;color:#fff}
+.masthead-cta{flex:none;display:inline-flex;align-items:center;gap:9px;padding:11px 20px;border-radius:4px;
+  background:var(--gold);color:#1d1300;font:700 .98rem "Source Sans 3",system-ui,sans-serif;text-decoration:none;
+  box-shadow:inset 0 -2px 0 rgba(120,75,0,.35);transition:background .18s ease,transform .18s ease}
+.masthead-cta svg{width:18px;height:18px}
+.masthead-cta:hover,.masthead-cta:focus-visible{background:#f4bd39;transform:translateY(-1px)}
+
+.site-nav{position:sticky;top:0;z-index:50;background:#0a1a3a;border-top:1px solid rgba(232,163,23,.5);border-bottom:1px solid rgba(255,255,255,.1);transition:box-shadow .25s ease}
+.site-nav.is-stuck{box-shadow:0 6px 20px rgba(8,18,40,.4)}
+.site-nav .wrap{display:flex;justify-content:center;gap:4px;padding:0 20px;overflow-x:auto;scrollbar-width:none}
+.site-nav .wrap::-webkit-scrollbar{display:none}
+.site-nav a,.site-nav .nav-btn{
+  position:relative;flex:none;margin:0;padding:14px 20px;border:0;border-radius:0;background:none;cursor:pointer;
+  font:600 .98rem/1.2 "Source Sans 3",system-ui,sans-serif;color:#c9d7f2;text-decoration:none;white-space:nowrap;
+  transition:color .18s ease,background .18s ease}
+.site-nav a::after,.site-nav .nav-btn::after{content:"";position:absolute;left:20px;right:20px;bottom:0;height:3px;background:var(--gold);transform:scaleX(0);transition:transform .2s ease}
+.site-nav a:hover,.site-nav a:focus-visible,.site-nav .nav-btn:hover,.site-nav .nav-btn:focus-visible{color:#fff;background:rgba(255,255,255,.05)}
+.site-nav a:hover::after,.site-nav a:focus-visible::after,.site-nav .nav-btn:hover::after,.site-nav .nav-btn:focus-visible::after,.site-nav a[aria-current]::after{transform:scaleX(1)}
+.site-nav a[aria-current]{color:#fff}
+.site-nav a:focus-visible,.site-nav .nav-btn:focus-visible,.masthead-cta:focus-visible,body[data-page=student] header.top .brand:focus-visible{outline:2px solid var(--gold);outline-offset:-2px}
+body[data-page=student] section[id],body[data-page=student] #news-h{scroll-margin-top:56px}
+
+@media(max-width:700px){
+  body[data-page=student] header.top .wrap{padding:14px 16px;gap:12px}
+  body[data-page=student] header.top .brand{gap:12px}
+  body[data-page=student] header.top .brand-mark{width:44px;height:44px;font-size:.82rem}
+  body[data-page=student] header.top .brand-name{padding-left:12px;font-size:1.15rem}
+  .masthead-cta{padding:9px 14px;font-size:.9rem}
+  .masthead-cta svg{display:none}
+  .site-nav .wrap{justify-content:flex-start;padding:0 8px}
+  .site-nav a,.site-nav .nav-btn{padding:13px 14px;font-size:.95rem}
+  .site-nav a::after,.site-nav .nav-btn::after{left:14px;right:14px}
+}
+@media(max-width:380px){body[data-page=student] header.top .brand-name{font-size:1rem}.masthead-cta{padding:8px 11px}}
