@@ -650,6 +650,7 @@ body[data-page=student] .site-nav a:hover,body[data-page=student] .site-nav a:fo
 .skin-swatch.sage{background:linear-gradient(90deg,#315B45 0 25%,#C49A72 25% 50%,#B58C98 50% 75%,#F1F3E9 75%)}
 .skin-swatch.sunset-riviera{background:linear-gradient(90deg,#A84F36 0 20%,#D47A55 20% 40%,#527B88 40% 60%,#E9B58B 60% 80%,#F8E8D5 80%)}
 .skin-swatch.midnight-lavender{background:linear-gradient(90deg,#29243F 0 20%,#74658F 20% 40%,#B5A5CC 40% 60%,#E5DDF0 60% 80%,#F7F3FA 80%)}
+.skin-swatch.retro{background:linear-gradient(#ff8a1e 0 25%,#ffd21f 25% 50%,#e0206f 50% 75%,#0a8aa3 75%)}
 
 
 
@@ -1034,3 +1035,233 @@ html[data-skin=mario] body[data-page=student] .theme-toggle:active{transform:tra
   html[data-skin=mario] body[data-page=student] .site-nav a,html[data-skin=mario] body[data-page=student] .site-nav .nav-btn{padding:12px 4px 12px 14px;font-size:.7rem}
 }
 @media(prefers-reduced-motion:reduce){html[data-skin=mario] body[data-page=student] *{transition:none!important}}
+
+
+/* =====================================================================
+   Retro theme (90s): opt-in, html[data-skin=retro]
+   Built from the 90s collage: Walkman blue, VHS stripes (orange / yellow / pink / teal),
+   popcorn red, smiley yellow, hard offset shadows, memphis confetti and stickers.
+   Images live in /retro (collage, star, smiley and badge crops).
+   ===================================================================== */
+html[data-skin=retro] body[data-page=student]{
+  --r-navy:#1b3f8f;--r-navy-d:#14285e;--r-orange:#ff8a1e;--r-yellow:#ffd21f;--r-pink:#e0206f;--r-teal:#0a8aa3;--r-red:#d92b2f;--r-ink:#1a1033;--r-cream:#fff4dc;
+  --font-heading:"Bungee";--font-body:"Poppins";--r-marker:"Permanent Marker";
+  --bg:#fff4dc;--card:#fffdf6;--ink:#1a1033;--ink2:#4b3f73;--line:#1a1033;--outline:#1a1033;--shade:#1a1033;--field:#fff;
+  --gold:#ff8a1e;--gold-d:#b3125b;--gold-rgb:255,138,30;--on-gold:#1a1033;--tertiary:#0a8aa3;--tertiary-rgb:10,138,163;--tertiary-d:#066477;--on-tertiary:#fff;
+  --focus:#1b3f8f;--red:#d92b2f;--green:#0f8a4b;--radius:14px;
+  --hero-1:#0a6f86;--hero-2:#1b3f8f;--hdr-bg:#1a1033;--hdr-ink:#fff4dc;--nav-bg:#1b3f8f;
+  --r-confetti:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='240' opacity='0.2'%3E%3Cpath d='M22 34q9-14 18 0t18 0t18 0' fill='none' stroke='%23e0206f' stroke-width='5' stroke-linecap='round'/%3E%3Cpath d='M150 24l16 28h-32z' fill='none' stroke='%230a8aa3' stroke-width='5' stroke-linejoin='round'/%3E%3Ccircle cx='206' cy='92' r='9' fill='%23ff8a1e'/%3E%3Cpath d='M60 120h20M70 110v20' stroke='%231b3f8f' stroke-width='5' stroke-linecap='round'/%3E%3Cpath d='M130 150q9-14 18 0t18 0t18 0' fill='none' stroke='%230a8aa3' stroke-width='5' stroke-linecap='round'/%3E%3Cpath d='M28 200l16 28h-32z' fill='none' stroke='%23e0206f' stroke-width='5' stroke-linejoin='round'/%3E%3Ccircle cx='100' cy='216' r='8' fill='%23f2b705'/%3E%3Ccircle cx='20' cy='128' r='6' fill='%23ff8a1e'/%3E%3Cpath d='M196 190l12 12m0-12l-12 12' stroke='%23e0206f' stroke-width='5' stroke-linecap='round'/%3E%3Ccircle cx='112' cy='70' r='6' fill='%231b3f8f'/%3E%3C/svg%3E");--r-hero-confetti:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='240' opacity='0.22'%3E%3Cpath d='M22 34q9-14 18 0t18 0t18 0' fill='none' stroke='%23ffffff' stroke-width='5' stroke-linecap='round'/%3E%3Cpath d='M150 24l16 28h-32z' fill='none' stroke='%23ffd21f' stroke-width='5' stroke-linejoin='round'/%3E%3Ccircle cx='206' cy='92' r='9' fill='%23ff8a1e'/%3E%3Cpath d='M60 120h20M70 110v20' stroke='%23ffffff' stroke-width='5' stroke-linecap='round'/%3E%3Cpath d='M130 150q9-14 18 0t18 0t18 0' fill='none' stroke='%23ffd21f' stroke-width='5' stroke-linecap='round'/%3E%3Cpath d='M28 200l16 28h-32z' fill='none' stroke='%23ffffff' stroke-width='5' stroke-linejoin='round'/%3E%3Ccircle cx='100' cy='216' r='8' fill='%23ff5fa2'/%3E%3Ccircle cx='20' cy='128' r='6' fill='%23ff8a1e'/%3E%3Cpath d='M196 190l12 12m0-12l-12 12' stroke='%23ffffff' stroke-width='5' stroke-linecap='round'/%3E%3Ccircle cx='112' cy='70' r='6' fill='%23ffffff'/%3E%3C/svg%3E");
+  --r-stripes:linear-gradient(var(--r-orange) 0 25%,var(--r-yellow) 25% 50%,var(--r-pink) 50% 75%,var(--r-teal) 75% 100%);
+  background:var(--bg) var(--r-confetti);background-size:240px 240px;color:var(--ink);font-family:"Poppins",system-ui,sans-serif;
+}
+:root[data-theme="dark"][data-skin=retro] body[data-page=student]{
+  --bg:#150f35;--card:#241b57;--ink:#fff4dc;--ink2:#cfc6f3;--line:#fff4dc;--outline:#fff4dc;--shade:#0a8aa3;--field:#120c2c;
+  --gold:#ff9a3d;--gold-d:#ffd21f;--gold-rgb:255,154,61;--tertiary-d:#7fe0f2;--focus:#ffd21f;
+  --hero-1:#13355f;--hero-2:#2a1a6b;--r-confetti:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='240' opacity='0.24'%3E%3Cpath d='M22 34q9-14 18 0t18 0t18 0' fill='none' stroke='%23ff5fa2' stroke-width='5' stroke-linecap='round'/%3E%3Cpath d='M150 24l16 28h-32z' fill='none' stroke='%2339d0e8' stroke-width='5' stroke-linejoin='round'/%3E%3Ccircle cx='206' cy='92' r='9' fill='%23ff9a3d'/%3E%3Cpath d='M60 120h20M70 110v20' stroke='%238fa8ff' stroke-width='5' stroke-linecap='round'/%3E%3Cpath d='M130 150q9-14 18 0t18 0t18 0' fill='none' stroke='%2339d0e8' stroke-width='5' stroke-linecap='round'/%3E%3Cpath d='M28 200l16 28h-32z' fill='none' stroke='%23ff5fa2' stroke-width='5' stroke-linejoin='round'/%3E%3Ccircle cx='100' cy='216' r='8' fill='%23ffd21f'/%3E%3Ccircle cx='20' cy='128' r='6' fill='%23ff9a3d'/%3E%3Cpath d='M196 190l12 12m0-12l-12 12' stroke='%23ff5fa2' stroke-width='5' stroke-linecap='round'/%3E%3Ccircle cx='112' cy='70' r='6' fill='%238fa8ff'/%3E%3C/svg%3E");--r-navy:#21196a;--nav-bg:#21196a;--r-pink:#ff4f9a;--r-teal:#16b3cf;}
+@media(prefers-color-scheme:dark){:root:not([data-theme="light"])[data-skin=retro] body[data-page=student]{
+  --bg:#150f35;--card:#241b57;--ink:#fff4dc;--ink2:#cfc6f3;--line:#fff4dc;--outline:#fff4dc;--shade:#0a8aa3;--field:#120c2c;
+  --gold:#ff9a3d;--gold-d:#ffd21f;--gold-rgb:255,154,61;--tertiary-d:#7fe0f2;--focus:#ffd21f;
+  --hero-1:#13355f;--hero-2:#2a1a6b;--r-confetti:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='240' opacity='0.24'%3E%3Cpath d='M22 34q9-14 18 0t18 0t18 0' fill='none' stroke='%23ff5fa2' stroke-width='5' stroke-linecap='round'/%3E%3Cpath d='M150 24l16 28h-32z' fill='none' stroke='%2339d0e8' stroke-width='5' stroke-linejoin='round'/%3E%3Ccircle cx='206' cy='92' r='9' fill='%23ff9a3d'/%3E%3Cpath d='M60 120h20M70 110v20' stroke='%238fa8ff' stroke-width='5' stroke-linecap='round'/%3E%3Cpath d='M130 150q9-14 18 0t18 0t18 0' fill='none' stroke='%2339d0e8' stroke-width='5' stroke-linecap='round'/%3E%3Cpath d='M28 200l16 28h-32z' fill='none' stroke='%23ff5fa2' stroke-width='5' stroke-linejoin='round'/%3E%3Ccircle cx='100' cy='216' r='8' fill='%23ffd21f'/%3E%3Ccircle cx='20' cy='128' r='6' fill='%23ff9a3d'/%3E%3Cpath d='M196 190l12 12m0-12l-12 12' stroke='%23ff5fa2' stroke-width='5' stroke-linecap='round'/%3E%3Ccircle cx='112' cy='70' r='6' fill='%238fa8ff'/%3E%3C/svg%3E");--r-navy:#21196a;--nav-bg:#21196a;--r-pink:#ff4f9a;--r-teal:#16b3cf;}}
+
+/* type: chunky display, marker accents, friendly body */
+html[data-skin=retro] body[data-page=student] *{font-family:"Poppins",system-ui,sans-serif}
+html[data-skin=retro] body[data-page=student] :is(h1,h2,.brand-mark){font-family:"Bungee","Poppins",sans-serif;font-weight:400;letter-spacing:.01em}
+html[data-skin=retro] body[data-page=student] :is(h3,.important-banner-title){font-family:"Poppins",sans-serif;font-weight:800}
+html[data-skin=retro] body[data-page=student] :is(.cat-name,.hero-tag,.brand-name,.contact-title){font-family:"Permanent Marker","Poppins",cursive}
+html[data-skin=retro] body[data-page=student] .sub{color:var(--ink2);font-weight:500;font-size:1.02rem}
+html[data-skin=retro] body[data-page=student] a:not(.btn):not(.brand):not(.masthead-cta):not(.site-nav a):not(footer a){text-decoration-thickness:2px;text-underline-offset:3px}
+
+/* ---------- header: VHS-black bar with rainbow tape stripe ---------- */
+html[data-skin=retro] body[data-page=student] header.top{position:relative;background:var(--r-ink);border-bottom:0;padding-bottom:16px}
+html[data-skin=retro] body[data-page=student] header.top::after{content:"";position:absolute;left:0;right:0;bottom:0;height:16px;background:var(--r-stripes);border-top:3px solid var(--r-ink)}
+html[data-skin=retro] body[data-page=student] header.top .wrap{padding:16px 20px}
+html[data-skin=retro] body[data-page=student] header.top .brand-mark{width:auto;height:auto;border-radius:8px;border:3px solid var(--r-ink);background:var(--r-cream);color:var(--r-ink);
+  padding:7px 13px 5px;font-size:1.35rem;line-height:1;letter-spacing:.04em;transform:rotate(-4deg);box-shadow:4px 4px 0 var(--r-pink);text-shadow:none}
+html[data-skin=retro] body[data-page=student] header.top .brand .brand-mark{color:var(--r-ink)}
+html[data-skin=retro] body[data-page=student] header.top .brand-name{padding-left:0;border-left:0;font-size:1.55rem;line-height:1.1;color:var(--r-cream);text-shadow:2px 2px 0 var(--r-pink);letter-spacing:.01em}
+html[data-skin=retro] body[data-page=student] header.top .brand .brand-name{color:var(--r-cream)}
+html[data-skin=retro] body[data-page=student] .masthead-cta{padding:10px 18px;border:3px solid var(--r-ink);border-radius:999px;background:var(--r-yellow);color:var(--r-ink);
+  font:800 .9rem "Poppins",sans-serif;text-transform:uppercase;letter-spacing:.05em;box-shadow:4px 4px 0 var(--r-teal);transition:transform .12s ease,box-shadow .12s ease}
+html[data-skin=retro] body[data-page=student] .masthead-cta:hover,html[data-skin=retro] body[data-page=student] .masthead-cta:focus-visible{background:#ffe252;color:var(--r-ink);transform:translate(-1px,-1px) rotate(-1deg);box-shadow:6px 6px 0 var(--r-teal)}
+html[data-skin=retro] body[data-page=student] .masthead-cta:active{transform:translate(3px,3px);box-shadow:0 0 0 var(--r-teal)}
+
+/* ---------- nav: Walkman-blue deck with pill buttons ---------- */
+html[data-skin=retro] body[data-page=student] .site-nav{background:var(--nav-bg);border:0;border-bottom:4px solid var(--r-ink)}
+html[data-skin=retro] body[data-page=student] .site-nav.is-stuck{box-shadow:0 5px 0 rgba(26,16,51,.35)}
+html[data-skin=retro] body[data-page=student] .site-nav .wrap{gap:6px;padding-top:8px;padding-bottom:8px}
+html[data-skin=retro] body[data-page=student] .site-nav :is(a,.nav-btn){padding:8px 16px;border:2px solid transparent;border-radius:999px;color:var(--r-cream);
+  font:800 .82rem "Poppins",sans-serif;text-transform:uppercase;letter-spacing:.07em;background:none}
+html[data-skin=retro] body[data-page=student] .site-nav :is(a,.nav-btn)::after{display:none}
+html[data-skin=retro] body[data-page=student] .site-nav :is(a,.nav-btn):is(:hover,:focus-visible){background:var(--r-yellow);color:var(--r-ink);border-color:var(--r-ink);transform:rotate(-2deg)}
+html[data-skin=retro] body[data-page=student] .site-nav a[aria-current]{background:var(--r-pink);color:#fff;border-color:var(--r-ink);box-shadow:2px 2px 0 var(--r-ink)}
+html[data-skin=retro] body[data-page=student] .site-nav a:focus-visible,html[data-skin=retro] body[data-page=student] .site-nav .nav-btn:focus-visible{outline:3px solid var(--r-yellow);outline-offset:1px}
+
+/* ---------- hero: teal-to-navy with confetti accents ---------- */
+html[data-skin=retro] body[data-page=student] .hero{background:var(--r-stripes) bottom/100% 16px no-repeat,linear-gradient(135deg,var(--hero-1) 0%,var(--hero-2) 100%);border-bottom:4px solid var(--r-ink);
+  padding:42px 0 54px;color:var(--r-cream);min-height:0}
+html[data-skin=retro] body[data-page=student] .hero::before{content:"";position:absolute;inset:0 0 16px 0;z-index:0;background:var(--r-hero-confetti);background-size:240px 240px;pointer-events:none}
+html[data-skin=retro] body[data-page=student] .hero .wrap>*{max-width:min(600px,62%)}
+html[data-skin=retro] body[data-page=student] .hero h1{max-width:min(600px,62%);font-size:clamp(1.55rem,4.3vw,2.9rem);line-height:1.12;color:var(--r-cream);text-shadow:3px 3px 0 var(--r-pink),6px 6px 0 var(--r-ink);margin-bottom:.55em}
+html[data-skin=retro] body[data-page=student] .hero p{max-width:44ch;color:var(--r-cream);font-weight:500;font-size:1.08rem;text-shadow:0 1px 0 rgba(26,16,51,.6)}
+html[data-skin=retro] body[data-page=student] .hero .btn{background:var(--r-yellow);color:var(--r-ink);margin-top:6px}
+html[data-skin=retro] body[data-page=student] .hero.has-photo .hero-bg::after{background:linear-gradient(90deg,rgba(26,16,51,calc(var(--hero-dim,.6) + .15)),rgba(26,16,51,calc(var(--hero-dim,.6)*.7)))}
+html[data-skin=retro] body[data-page=student] .hero.has-photo :is(h1,p){color:var(--r-cream)}
+html[data-skin=retro] body[data-page=student] .hero.has-photo h1{text-shadow:3px 3px 0 var(--r-pink),6px 6px 0 var(--r-ink)}
+
+/* ---------- section titles with sticker badges ---------- */
+html[data-skin=retro] body[data-page=student] .block h2{display:flex;align-items:center;gap:14px;font-size:clamp(1.25rem,3.4vw,1.85rem);line-height:1.15;color:var(--ink);margin-bottom:.45em}
+html[data-skin=retro] body[data-page=student] .block h2::before{content:"";flex:none;width:64px;height:64px;border-radius:50%;border:3px solid var(--r-ink);background-color:var(--r-yellow);background-repeat:no-repeat;
+  background-position:center;background-size:118%;box-shadow:3px 3px 0 var(--r-ink);transform:rotate(-7deg)}
+html[data-skin=retro] body[data-page=student] #news-h::before{background-image:url("retro/walkman.webp");background-color:var(--r-teal)}
+html[data-skin=retro] body[data-page=student] #photos h2::before{background-image:url("retro/vhs.webp");background-color:var(--r-orange)}
+html[data-skin=retro] body[data-page=student] #messages h2::before{background-image:url("retro/cassette.webp");background-color:var(--r-pink);background-size:130%}
+html[data-skin=retro] body[data-page=student] #send h2::before{background-image:url("retro/shades.webp");background-color:var(--r-yellow);background-size:125%}
+html[data-skin=retro] body[data-page=student] #contact h2::before{background-image:url("retro/cd.webp");background-color:#7c5cff}
+html[data-skin=retro] body[data-page=student] .block h2::after{content:"";flex:1 1 40px;height:12px;min-width:30px;border-radius:99px;background:var(--r-stripes);border:2px solid var(--r-ink)}
+html[data-skin=retro] body[data-page=student] #contact h2,html[data-skin=retro] body[data-page=student] #send h2{text-align:left}
+html[data-skin=retro] body[data-page=student] .cat-name{color:var(--gold-d);font-size:1.3rem;transform:rotate(-1deg);transform-origin:left}
+
+/* ---------- cards ---------- */
+html[data-skin=retro] body[data-page=student] :is(.news-item,.note,.panel,.gallery figure,.contact-card,.phone-card,.best-card,.best-month,.org-card,.important-banner-inner,.confirm-dialog,.gate-card,.important-announcement-card){
+  border:3px solid var(--outline);border-radius:var(--radius);box-shadow:6px 6px 0 var(--shade);background:var(--card);color:var(--ink)}
+html[data-skin=retro] body[data-page=student] .news-item{border-left:14px solid var(--r-orange)}
+html[data-skin=retro] body[data-page=student] .news-item:nth-child(3n+2){border-left-color:var(--r-pink)}
+html[data-skin=retro] body[data-page=student] .news-item:nth-child(3n+3){border-left-color:var(--r-teal)}
+html[data-skin=retro] body[data-page=student] .news-item h3{font-size:1.3rem}
+html[data-skin=retro] body[data-page=student] .meta{color:var(--ink2)}
+html[data-skin=retro] body[data-page=student] .tag{border:2px solid var(--r-ink);background:var(--r-yellow);color:var(--r-ink);font-weight:800}
+html[data-skin=retro] body[data-page=student] .tag.ssc{background:#8ee6b4;color:var(--r-ink)}
+html[data-skin=retro] body[data-page=student] .wall .note{border-top:12px solid var(--r-pink)}
+html[data-skin=retro] body[data-page=student] .wall .note:nth-child(4n+2){border-top-color:var(--r-teal)}
+html[data-skin=retro] body[data-page=student] .wall .note:nth-child(4n+3){border-top-color:var(--r-orange)}
+html[data-skin=retro] body[data-page=student] .wall .note:nth-child(4n+4){border-top-color:var(--r-yellow)}
+html[data-skin=retro] body[data-page=student] .wall .note:nth-child(odd){transform:rotate(-.6deg)}
+html[data-skin=retro] body[data-page=student] .wall .note:nth-child(even){transform:rotate(.6deg)}
+html[data-skin=retro] body[data-page=student] .note-comments,html[data-skin=retro] body[data-page=student] .note-comment{border-color:var(--line)}
+html[data-skin=retro] body[data-page=student] .note-comment{border-bottom-style:dashed}
+
+/* campus moments: polaroids */
+html[data-skin=retro] body[data-page=student] .gallery figure{padding:8px 8px 0;border-radius:6px;background:#fffdf6}
+html[data-skin=retro] body[data-page=student] .gallery figure:nth-child(odd){transform:rotate(-1.2deg)}
+html[data-skin=retro] body[data-page=student] .gallery figure:nth-child(even){transform:rotate(1deg)}
+html[data-skin=retro] body[data-page=student] .gallery figure,html[data-skin=retro] body[data-page=student] .gallery figcaption{color:var(--r-ink)}
+html[data-skin=retro] body[data-page=student] .gallery img{border:2px solid var(--r-ink);border-radius:2px}
+html[data-skin=retro] body[data-page=student] .gallery figcaption{font-family:"Permanent Marker","Poppins",cursive;font-size:1rem;padding:10px 6px 12px}
+html[data-skin=retro] body[data-page=student] :is(.news-item img,.important-banner-img,.news-image-grid img,.news-image-carousel img){border-radius:8px;border:2px solid var(--outline)}
+html[data-skin=retro] body[data-page=student] .gallery-submit{border:3px dashed var(--outline);border-radius:var(--radius);background:var(--card);color:var(--ink)}
+html[data-skin=retro] body[data-page=student] .gallery-submit:hover{border-color:var(--r-pink);background:#ffe9f3;color:var(--r-ink)}
+html[data-skin=retro] body[data-page=student] .gallery-submit span:first-child{color:var(--r-pink)}
+html[data-skin=retro] body[data-page=student] .best-month{border-left:14px solid var(--r-yellow)}
+html[data-skin=retro] body[data-page=student] .best-card{border-radius:10px;box-shadow:4px 4px 0 var(--shade)}
+html[data-skin=retro] body[data-page=student] .best-badge,html[data-skin=retro] body[data-page=student] .important-badge{background:var(--r-yellow);color:var(--r-ink);border:2px solid var(--r-ink);font-family:"Permanent Marker","Poppins",cursive;font-weight:400;letter-spacing:.03em;font-size:.92rem}
+html[data-skin=retro] body[data-page=student] .best-likes{background:var(--r-ink);color:#ff9ec4}
+html[data-skin=retro] body[data-page=student] .gallery .course-tag{color:var(--r-ink);background:#bfe9f1;border-color:var(--r-ink)}
+html[data-skin=retro] body[data-page=student] .course-tag{border:2px solid var(--outline);background:rgba(var(--tertiary-rgb),.18);color:var(--tertiary-d);font-weight:800}
+
+/* announcement banner + pop-ups */
+html[data-skin=retro] body[data-page=student] .important-banner-inner{border-left:14px solid var(--r-red);background:var(--card);color:var(--ink)}
+html[data-skin=retro] body[data-page=student] .important-banner-inner:hover{transform:translate(-2px,-2px);box-shadow:8px 8px 0 var(--shade)}
+html[data-skin=retro] body[data-page=student] .important-banner-text{color:var(--ink2)}
+html[data-skin=retro] body[data-page=student] .important-banner-hint,:root[data-theme="dark"][data-skin=retro] body[data-page=student] .important-banner-hint{color:var(--gold-d)}
+html[data-skin=retro] body[data-page=student] .important-announcement-card,html[data-skin=retro] body[data-page=student] .gate-card{overflow:hidden}
+html[data-skin=retro] body[data-page=student] .important-announcement-head,html[data-skin=retro] body[data-page=student] .gate-head{background:var(--r-navy);color:var(--r-cream);border-bottom:0;position:relative;padding-bottom:26px}
+html[data-skin=retro] body[data-page=student] .important-announcement-head::after{content:"";position:absolute;left:0;right:0;bottom:0;height:12px;background:var(--r-stripes);border-top:3px solid var(--r-ink)}
+html[data-skin=retro] body[data-page=student] .important-announcement-head h2{color:var(--r-cream);text-shadow:2px 2px 0 var(--r-pink);display:block}
+html[data-skin=retro] body[data-page=student] .important-announcement-head h2::before,html[data-skin=retro] body[data-page=student] .important-announcement-head h2::after{display:none}
+html[data-skin=retro] body[data-page=student] .important-announcement-foot,html[data-skin=retro] body[data-page=student] .gate-foot{border-top:3px dashed var(--line)}
+html[data-skin=retro] body[data-page=student] .gate-count{color:var(--gold-d)}
+html[data-skin=retro] dialog::backdrop{background:rgba(20,10,50,.78)}
+html[data-skin=retro] body[data-page=student] .important-announcement-gate,html[data-skin=retro] body[data-page=student] .org-dialog{background:rgba(20,10,50,.9)}
+
+/* ---------- buttons ---------- */
+html[data-skin=retro] body[data-page=student] .btn{padding:10px 20px;border:3px solid var(--outline);border-radius:12px;font:800 .92rem "Poppins",sans-serif;text-transform:uppercase;letter-spacing:.05em;
+  background:var(--r-orange);color:var(--r-ink);box-shadow:4px 4px 0 var(--shade);transition:transform .12s ease,box-shadow .12s ease}
+html[data-skin=retro] body[data-page=student] .btn:hover{filter:none;transform:translate(-1px,-1px);box-shadow:5px 5px 0 var(--shade)}
+html[data-skin=retro] body[data-page=student] .btn:active{transform:translate(3px,3px);box-shadow:0 0 0 var(--shade)}
+html[data-skin=retro] body[data-page=student] .btn.ghost{background:var(--card);color:var(--ink);border:3px solid var(--outline)}
+html[data-skin=retro] body[data-page=student] .hero .btn.ghost{background:transparent;color:var(--r-cream);border-color:var(--r-cream)}
+html[data-skin=retro] body[data-page=student] .btn.danger{background:var(--r-red);color:#fff}
+html[data-skin=retro] body[data-page=student] .btn.ok{background:var(--green);color:#fff}
+html[data-skin=retro] body[data-page=student] .btn:disabled{opacity:.55;filter:grayscale(.4);cursor:not-allowed;box-shadow:2px 2px 0 var(--shade)}
+html[data-skin=retro] body[data-page=student] .more{color:var(--gold-d);font-weight:800}
+
+/* ---------- chips, tabs, reactions ---------- */
+html[data-skin=retro] body[data-page=student] :is(.message-filters button,.cat-chip,.rx){border:3px solid var(--outline);border-radius:999px;background:var(--card);color:var(--ink);
+  font:800 .8rem "Poppins",sans-serif;text-transform:uppercase;letter-spacing:.05em;box-shadow:3px 3px 0 var(--shade);transition:transform .1s ease,box-shadow .1s ease}
+html[data-skin=retro] body[data-page=student] :is(.message-filters button,.cat-chip,.rx):hover{background:var(--r-yellow);color:var(--r-ink);border-color:var(--outline)}
+html[data-skin=retro] body[data-page=student] :is(.message-filters button[aria-pressed=true],.cat-chip[aria-selected=true]){background:var(--r-pink);color:#fff;border-color:var(--outline);transform:translate(2px,2px);box-shadow:1px 1px 0 var(--shade)}
+html[data-skin=retro] body[data-page=student] .cat-chip b{background:var(--r-ink);color:var(--r-cream);border-radius:99px}
+html[data-skin=retro] body[data-page=student] .cat-chip[aria-selected=true] b{background:var(--r-yellow);color:var(--r-ink)}
+html[data-skin=retro] body[data-page=student] .rx.on{background:var(--r-yellow);color:var(--r-ink)}
+
+/* ---------- forms ---------- */
+html[data-skin=retro] body[data-page=student] :is(input[type=text],input[type=email],input[type=password],input[type=url],textarea,select){border:3px solid var(--outline);border-radius:10px;background:var(--field);color:var(--ink);font:500 1rem "Poppins",sans-serif}
+html[data-skin=retro] body[data-page=student] :is(input,textarea,select):focus{outline:3px solid var(--r-teal);outline-offset:1px;box-shadow:4px 4px 0 var(--r-teal)}
+html[data-skin=retro] body[data-page=student] label{font-weight:800;text-transform:uppercase;letter-spacing:.05em;font-size:.82rem}
+html[data-skin=retro] body[data-page=student] .count{font-weight:600}
+html[data-skin=retro] body[data-page=student] .dropzone,html[data-skin=retro] body[data-page=student] .plus-tile{border:3px dashed var(--outline);border-radius:12px;background:var(--bg)}
+html[data-skin=retro] body[data-page=student] .plus-icon{color:var(--r-pink)}
+html[data-skin=retro] body[data-page=student] .step-label span{background:var(--r-pink);color:#fff;border:2px solid var(--r-ink)}
+html[data-skin=retro] body[data-page=student] .confirm-dialog blockquote{border-radius:8px;border-left:8px solid var(--r-orange);background:var(--bg)}
+html[data-skin=retro] body[data-page=student] .settings-warning{border-left-color:var(--r-pink)}
+
+/* ---------- officers ---------- */
+html[data-skin=retro] body[data-page=student] .org-dialog #officerContent{background:var(--bg) var(--r-confetti);background-size:240px 240px}
+html[data-skin=retro] body[data-page=student] .org-dialog .org-card{background:var(--card);color:var(--ink);border-color:var(--outline);box-shadow:4px 4px 0 var(--shade)}
+html[data-skin=retro] body[data-page=student] .org-card{border-top:10px solid var(--r-pink)}
+html[data-skin=retro] body[data-page=student] .lvl2 .org-card{border-top-color:var(--r-orange)}
+html[data-skin=retro] body[data-page=student] .lvl3 .org-card{border-top-color:var(--r-teal)}
+html[data-skin=retro] body[data-page=student] .lvl4 .org-card{border-top-color:var(--r-yellow)}
+html[data-skin=retro] body[data-page=student] .lvl0 .org-card{border-top-color:var(--r-navy)}
+html[data-skin=retro] body[data-page=student] .org-card:hover,html[data-skin=retro] body[data-page=student] .org-card:focus-visible,html[data-skin=retro] body[data-page=student] .org-dialog .org-card:hover{border-color:var(--outline);transform:translate(-2px,-2px) rotate(-.6deg);box-shadow:7px 7px 0 var(--shade)}
+html[data-skin=retro] body[data-page=student] .org-dialog .org-photo,html[data-skin=retro] body[data-page=student] .org-photo{border:3px solid var(--outline);background:var(--r-navy);color:var(--r-cream)}
+html[data-skin=retro] body[data-page=student] .org-role,html[data-skin=retro] body[data-page=student] .org-dialog .org-card .org-role,html[data-skin=retro] body[data-page=student] .officer-position{color:var(--gold-d)}
+html[data-skin=retro] body[data-page=student] .org-heading{background:var(--r-pink);color:#fff;border:3px solid var(--r-ink);font:400 .85rem "Bungee",sans-serif;letter-spacing:.04em;box-shadow:3px 3px 0 var(--r-ink)}
+html[data-skin=retro] body[data-page=student] .org-level:not(:first-child)::before{width:4px;margin-left:-2px;background:var(--outline)}
+html[data-skin=retro] body[data-page=student] :is(.officer-portrait,.org-dialog .officer-portrait){border:4px solid var(--r-yellow);outline:3px solid var(--outline)}
+html[data-skin=retro] body[data-page=student] .officer-message{border-left-color:var(--r-pink);background:var(--bg)}
+html[data-skin=retro] body[data-page=student] :is(.officer-qr,.org-dialog .officer-qr,.contact-card img){border:3px solid var(--outline);border-radius:10px;background:#fff}
+html[data-skin=retro] body[data-page=student] .org-dialog .officer-message{background:var(--card)}
+
+/* ---------- footer: navy with tape stripe and stickers ---------- */
+html[data-skin=retro] body[data-page=student] footer{position:relative;overflow:hidden;background:var(--r-navy-d,#14285e);color:var(--r-cream);padding:50px 0 34px;border-top:4px solid var(--r-ink);font-weight:600}
+html[data-skin=retro] body[data-page=student] footer::before{content:"";position:absolute;left:0;right:0;top:0;height:16px;background:var(--r-stripes);border-bottom:3px solid var(--r-ink)}
+html[data-skin=retro] body[data-page=student] footer .wrap{position:relative;z-index:1}
+html[data-skin=retro] body[data-page=student] footer a{color:var(--r-yellow);font-weight:800}
+html[data-skin=retro] body[data-page=student] footer::after{content:"";position:absolute;right:max(8px,calc((100vw - 1040px)/2));bottom:-18px;width:112px;height:112px;background:url("retro/scrunchie.webp") center/contain no-repeat;transform:rotate(14deg);pointer-events:none;filter:drop-shadow(3px 3px 0 rgba(0,0,0,.35))}
+html[data-skin=retro] body[data-page=student] footer .wrap::before{content:"";position:absolute;left:max(0px,calc(50% - 520px));bottom:-8px;width:76px;height:76px;background:url("retro/popcorn.webp") center/contain no-repeat;transform:rotate(-8deg);pointer-events:none}
+
+/* ---------- floating light / dark button: a smiley-yellow badge ---------- */
+html[data-skin=retro] body[data-page=student] .theme-toggle{border:3px solid var(--outline);border-radius:50%;background:var(--r-yellow);color:var(--r-ink);box-shadow:4px 4px 0 var(--shade);transition:transform .15s ease,box-shadow .15s ease}
+html[data-skin=retro] body[data-page=student] .theme-toggle:hover,html[data-skin=retro] body[data-page=student] .theme-toggle:focus-visible{background:#ffe252;color:var(--r-ink);border-color:var(--outline);transform:rotate(-12deg) scale(1.06)}
+html[data-skin=retro] body[data-page=student] .theme-toggle:active{transform:translate(3px,3px);box-shadow:0 0 0 var(--shade)}
+html[data-skin=retro] body[data-page=student] .toast{background:var(--r-ink);color:var(--r-cream);border:3px solid var(--r-yellow);border-radius:12px;box-shadow:5px 5px 0 var(--r-pink);font-weight:700}
+html[data-skin=retro] body[data-page=student] .lightbox img{border:4px solid var(--r-cream);border-radius:6px;box-shadow:8px 8px 0 var(--r-pink)}
+
+/* ---------- reduced-motion fallback ---------- */
+@media(prefers-reduced-motion:reduce){html[data-skin=retro] body[data-page=student] *{transition:none!important}}
+
+/* ---------- phones ---------- */
+@media(max-width:860px){
+  html[data-skin=retro] body[data-page=student] .hero{padding:34px 0 42px;min-height:0}
+  html[data-skin=retro] body[data-page=student] .hero .wrap>*,html[data-skin=retro] body[data-page=student] .hero h1{max-width:100%}
+  html[data-skin=retro] body[data-page=student] .hero h1{font-size:clamp(1.45rem,6.2vw,2.3rem)}
+}
+@media(max-width:700px){
+  html[data-skin=retro] body[data-page=student] header.top .wrap{padding:12px 14px}
+  html[data-skin=retro] body[data-page=student] header.top .brand-mark{padding:6px 10px 4px;font-size:1.05rem}
+  html[data-skin=retro] body[data-page=student] header.top .brand-name{font-size:1.1rem}
+  html[data-skin=retro] body[data-page=student] .masthead-cta{padding:8px 12px;font-size:.74rem;border-width:2px;box-shadow:3px 3px 0 var(--r-teal)}
+  html[data-skin=retro] body[data-page=student] .site-nav .wrap{padding:6px 8px}
+  html[data-skin=retro] body[data-page=student] .site-nav :is(a,.nav-btn){padding:7px 12px;font-size:.74rem}
+  html[data-skin=retro] body[data-page=student] .block h2{gap:10px}
+  html[data-skin=retro] body[data-page=student] .block h2::before{width:50px;height:50px}
+  html[data-skin=retro] body[data-page=student] .block h2::after{display:none}
+  html[data-skin=retro] body[data-page=student] :is(.news-item,.note,.panel,.gallery figure,.contact-card,.phone-card,.best-card,.org-card,.important-banner-inner){box-shadow:4px 4px 0 var(--shade)}
+  html[data-skin=retro] body[data-page=student] footer::after{display:none}
+  html[data-skin=retro] body[data-page=student] footer .wrap::before{display:none}
+}
+@media(max-width:400px){
+  html[data-skin=retro] body[data-page=student] header.top .brand-name{font-size:.95rem}
+  html[data-skin=retro] body[data-page=student] .site-nav :is(a,.nav-btn){padding:7px 9px;font-size:.68rem}
+}
