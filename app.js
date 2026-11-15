@@ -15,15 +15,10 @@ const NEW_DAYS = 7;       // only news newer than this triggers the lock
 const MESSAGE_LIMIT = 3000;
 const MESSAGE_GROW_LIMIT = 1000;
 const MAX_IMAGES_PER_COURSE = 6;
-const SITE_SKINS = new Set(["basic", "mario", "peach", "coffee", "sage", "sunset-riviera", "midnight-lavender", "retro"]);
+const SITE_SKINS = new Set(["basic", "mario", "retro"]);
 const SITE_SKIN_LABELS = {
   basic: "Basic theme",
   mario: "Super Mario theme",
-  peach: "Peach theme",
-  coffee: "Coffee theme",
-  sage: "Sage theme",
-  "sunset-riviera": "Sunset Riviera theme",
-  "midnight-lavender": "Midnight Lavender theme",
   retro: "Retro theme"
 };
 const normalizeSiteSkin = skin => SITE_SKINS.has(skin) ? skin : "basic";
@@ -142,7 +137,7 @@ function toast(msg) {
 }
 
 const state = {
-  news: [], images: [], imageSubmissions: [], messages: [], comments: [], dailyBest: [], officers: [],
+  news: [], images: [], imageSubmissions: [], messages: [], comments: [], dailyBest: [], officers: [], events: [],
   contact: { qrCodes: [], phoneNumbers: [] },
   importantAnnouncement: null,
   heroBackground: null,
@@ -150,6 +145,9 @@ const state = {
   newsPopupSettings: { lockSeconds: LOCK_SECONDS }
 };
 const loaded = new Set();
+const calNow = new Date();
+const cal = { y: calNow.getFullYear(), m: calNow.getMonth(), sel: null };
+const CAL_MIN = 2026 * 12, CAL_MAX = 2027 * 12 + 11; // January 2026 to December 2027
 function watch(name, q, render) {
   return onSnapshot(q, snap => {
     state[name] = snap.docs.map(d => ({ id: d.id, ...d.data() }));
@@ -726,6 +724,20 @@ function initStudent() {
   ensureHighlightWatch();
   watch("officers", query(collection(fs, "officers"), orderBy("createdAt", "asc")), renderOfficers);
   renderOfficers();
+  watch("events", query(collection(fs, "events"), orderBy("date", "asc")), renderCalendar);
+  renderCalendar();
+  $("#calendarBox").addEventListener("click", e => {
+    const nav = e.target.closest("[data-cal-nav]"), day = e.target.closest("[data-cal-day]");
+    if (nav) {
+      if (nav.dataset.calNav === "today") { const t = new Date(); cal.y = t.getFullYear(); cal.m = t.getMonth(); cal.sel = calYmd(t); }
+      else { const d = new Date(cal.y, cal.m + (nav.dataset.calNav === "next" ? 1 : -1), 1); cal.y = d.getFullYear(); cal.m = d.getMonth(); cal.sel = null; }
+      renderCalendar();
+    } else if (day) { cal.sel = day.dataset.calDay; renderCalendar(); if (state.events.some(ev => ev.date <= cal.sel && cal.sel <= calEnd(ev))) openEventDialog(cal.sel); }
+  });
+  initNavSwipeHint();
+  const evDlg = $("#eventDialog");
+  $("#eventDialogClose").addEventListener("click", () => evDlg.close());
+  evDlg.addEventListener("click", e => { if (e.target === evDlg) evDlg.close(); });
   $("#galleryTabs").addEventListener("click", e => {
     const chip = e.target.closest("[data-course]"); if (!chip) return;
     galleryCourse = chip.dataset.course; renderGallery();
@@ -961,6 +973,7 @@ let adminMessageFilter = "recent";
 let adminNewsFilter = "latest";
 let adminImageCourse = "all";
 function initAdmin() {
+  window.__adminReady = true;
   const loginBox = $("#loginBox"), dash = $("#dash");
   $("#officerPosition").innerHTML = `<option value="">Choose a position…</option>` + POSITIONS.map(p => `<option value="${p.name}">${p.name}${p.max > 1 ? ` (${p.max} seats)` : ""}</option>`).join("");
   $("#imgCourse").innerHTML = `<option value="">Choose a course…</option>` + COURSES.map(c => `<option value="${c.key}">${esc(c.name)}</option>`).join("");
@@ -1047,6 +1060,7 @@ function initAdmin() {
       watch("imageSubmissions", query(collection(fs, "imageSubmissions"), orderBy("date", "desc")), renderAdmin),
       watch("dailyBest", query(collection(fs, "dailyBest"), orderBy("day", "desc")), () => { purge(); renderAdmin(); }),
       watch("officers", query(collection(fs, "officers"), orderBy("createdAt", "asc")), renderOfficersAdmin),
+      watch("events", query(collection(fs, "events"), orderBy("date", "asc")), renderEventsAdmin),
       watch("messages", collection(fs, "messages"), renderAdmin),
       watch("comments", collection(fs, "comments"), renderAdmin),
       watchDocument("contact", doc(fs, "siteContent", "contact"), renderContactAdmin),
@@ -1064,7 +1078,21 @@ function initAdmin() {
       $("#loginErr").textContent = ""; $("#pass").value = "";
     } catch (err) {
       console.error(err);
-      $("#loginErr").textContent = "Incorrect username or password. Check your Firebase Auth account and try again.";
+      const code = (err && err.code) || "unknown";
+      const reasons = {
+        "auth/invalid-credential": "That email or password is not right, or this account does not exist in Firebase Authentication.",
+        "auth/wrong-password": "That password is not right.",
+        "auth/user-not-found": "No admin account exists with that email in Firebase Authentication.",
+        "auth/invalid-email": "Enter a valid email address.",
+        "auth/user-disabled": "This account is disabled in Firebase Authentication.",
+        "auth/too-many-requests": "Too many attempts. Wait a few minutes, then try again.",
+        "auth/network-request-failed": "No connection to Firebase. Check your internet and try again.",
+        "auth/operation-not-allowed": "Email/Password sign-in is turned off. In Firebase Console go to Authentication > Sign-in method and enable Email/Password.",
+        "auth/invalid-api-key": "The Firebase API key in firebase-config.js is not valid.",
+        "auth/api-key-not-valid.-please-pass-a-valid-api-key.": "The Firebase API key in firebase-config.js is not valid.",
+        "auth/unauthorized-domain": "This website address is not allowed. In Firebase Console go to Authentication > Settings > Authorized domains and add it."
+      };
+      $("#loginErr").textContent = `${reasons[code] || "Could not log in."} (${code})`;
     }
   });
   $("#logout").addEventListener("click", e => { e.preventDefault(); signOut(auth); });
@@ -1408,7 +1436,7 @@ function initAdmin() {
       }
       if (act.startsWith("del")) {
         if (!confirm("Delete this? This cannot be undone.")) return;
-        const col = act === "delnews" ? "news" : act === "delimg" ? "images" : act === "delsubmission" ? "imageSubmissions" : act === "delcomment" ? "comments" : act === "delbest" ? "dailyBest" : act === "delofficer" ? "officers" : "messages";
+        const col = act === "delnews" ? "news" : act === "delimg" ? "images" : act === "delsubmission" ? "imageSubmissions" : act === "delcomment" ? "comments" : act === "delbest" ? "dailyBest" : act === "delofficer" ? "officers" : act === "delevent" ? "events" : "messages";
         if (act === "delmsg") {
           const comments = await getDocs(query(collection(fs, "comments"), where("messageId", "==", id)));
           await Promise.all(comments.docs.map(comment => deleteDoc(comment.ref)));
@@ -1458,6 +1486,32 @@ function initAdmin() {
       console.error(err); posted.value = image.course;
       toast("Could not change the course.");
     } finally { imageCourseLocks.delete(nextCourse); }
+  });
+
+  /* Calendar events */
+  const eventMulti = $("#eventMulti"), eventEndWrap = $("#eventEndWrap"), eventEnd = $("#eventEnd");
+  const syncEventEnd = () => {
+    eventEndWrap.classList.toggle("hidden", !eventMulti.checked); eventEnd.required = eventMulti.checked;
+    if ($("#eventDate").value) eventEnd.min = $("#eventDate").value;
+  };
+  eventMulti.addEventListener("change", syncEventEnd); $("#eventDate").addEventListener("change", syncEventEnd);
+  $("#eventForm").addEventListener("submit", async e => {
+    e.preventDefault();
+    const date = $("#eventDate").value, end = eventMulti.checked ? eventEnd.value : "";
+    if (end) {
+      if (end <= date) return toast("The last day must be after the first day.");
+      if ((calParse(end) - calParse(date)) / DAY > 60) return toast("An event can last at most 61 days.");
+    }
+    const button = $("#saveEvent"); button.disabled = true;
+    try {
+      const data = { title: $("#eventTitle").value.trim(), date, time: $("#eventTime").value || "", details: $("#eventDetails").value.trim(), createdAt: Date.now() };
+      if (end) data.endDate = end;
+      const file = $("#eventImage").files[0];
+      if (file) data.image = await compress(file, 900, 600000);
+      await addDoc(collection(fs, "events"), data);
+      $("#eventForm").reset(); syncEventEnd(); toast("Event added to the calendar.");
+    } catch (err) { console.error(err); toast("Could not add the event. Check the image, that you are logged in, and that the rules are published."); }
+    finally { button.disabled = false; }
   });
 
   /* SSC officers */
@@ -1782,3 +1836,104 @@ initThemeToggle();
 
 if (page === "student") initStudent();
 if (page === "admin") initAdmin();
+
+
+/* ---------- CALENDAR ---------- */
+function calYmd(d) { return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`; }
+function calParse(s) { const [y, m, d] = String(s).split("-").map(Number); return new Date(y, (m || 1) - 1, d || 1); }
+function calLongDate(s) { return calParse(s).toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric", year: "numeric" }); }
+function calShortDate(s) { return calParse(s).toLocaleDateString(undefined, { month: "short", day: "numeric" }); }
+function calTime(t) {
+  if (!/^\d{2}:\d{2}$/.test(t || "")) return "";
+  const [h, m] = t.split(":").map(Number);
+  return `${h % 12 || 12}:${String(m).padStart(2, "0")} ${h < 12 ? "AM" : "PM"}`;
+}
+function calEnd(ev) { return ev.endDate && ev.endDate > ev.date ? ev.endDate : ev.date; }
+function calEventItem(ev, showDate) {
+  const multi = calEnd(ev) !== ev.date;
+  const range = multi ? `${calShortDate(ev.date)} – ${calShortDate(calEnd(ev))}` : (showDate ? calShortDate(ev.date) : "");
+  const meta = [range, calTime(ev.time)].filter(Boolean).join(" · ");
+  const img = typeof ev.image === "string" && ev.image.startsWith("data:image/") ? `<img class="cal-event-img" src="${esc(ev.image)}" alt="">` : "";
+  return `<li class="cal-event"><strong>${esc(ev.title || "")}</strong>
+    ${meta ? `<span class="meta">${esc(meta)}</span>` : ""}
+    ${img}${ev.details ? `<p>${esc(ev.details)}</p>` : ""}</li>`;
+}
+function renderCalendar() {
+  const box = $("#calendarBox"); if (!box) return;
+  let idx = cal.y * 12 + cal.m; idx = Math.min(CAL_MAX, Math.max(CAL_MIN, idx)); cal.y = Math.floor(idx / 12); cal.m = idx % 12;
+  const today = calYmd(new Date()), sel = cal.sel || today;
+  const start = new Date(cal.y, cal.m, 1 - new Date(cal.y, cal.m, 1).getDay());
+  const byDate = {};
+  state.events.forEach(ev => {
+    const end = calEnd(ev), d = calParse(ev.date);
+    for (let k = 0; k < 62; k++) { const key = calYmd(d); if (key > end) break; (byDate[key] = byDate[key] || []).push(ev); d.setDate(d.getDate() + 1); }
+  });
+  let cells = ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"].map(d => `<div class="cal-dow" aria-hidden="true">${d}</div>`).join("");
+  for (let i = 0; i < 42; i++) {
+    const dt = new Date(start.getFullYear(), start.getMonth(), start.getDate() + i), key = calYmd(dt), n = (byDate[key] || []).length;
+    const out = dt.getMonth() !== cal.m;
+    cells += `<button type="button" class="cal-cell${out ? " out" : ""}${key === today ? " today" : ""}${key === sel ? " selected" : ""}${n ? " has-event" : ""}" data-cal-day="${key}" aria-pressed="${key === sel}" aria-label="${esc(calLongDate(key))}${n ? `, ${n} event${n > 1 ? "s" : ""}` : ""}"><span>${dt.getDate()}</span>${n ? `<i class="cal-dot" aria-hidden="true"></i>` : ""}</button>`;
+  }
+  const chosen = byDate[sel] || [];
+  const upcoming = state.events.filter(ev => calEnd(ev) >= today).slice(0, 5);
+  const title = new Date(cal.y, cal.m, 1).toLocaleDateString(undefined, { month: "long", year: "numeric" });
+  box.innerHTML = `
+    <div class="cal-card">
+      <div class="cal-head">
+        <h3 class="cal-title">${esc(title)}</h3>
+        <button type="button" class="cal-btn" data-cal-nav="prev" aria-label="Previous month"${idx <= CAL_MIN ? " disabled" : ""}>&#9650;</button>
+        <button type="button" class="cal-btn" data-cal-nav="next" aria-label="Next month"${idx >= CAL_MAX ? " disabled" : ""}>&#9660;</button>
+      </div>
+      <div class="cal-grid">${cells}</div>
+      <div class="cal-foot"><button type="button" class="cal-today" data-cal-nav="today">Jump to today</button>
+        <span class="meta"><i class="cal-key" aria-hidden="true"></i> Pulsing days have events. Tap one for details.</span></div>
+    </div>
+    <div class="cal-side">
+      <div class="cal-card">
+        <h3 class="cal-side-title">${esc(calLongDate(sel))}</h3>
+        ${chosen.length ? `<ul class="cal-events">${chosen.map(ev => calEventItem(ev, false)).join("")}</ul>` : `<p class="meta">No events on this day.</p>`}
+      </div>
+      <div class="cal-card">
+        <h3 class="cal-side-title">Coming up</h3>
+        ${upcoming.length ? `<ul class="cal-events">${upcoming.map(ev => calEventItem(ev, true)).join("")}</ul>` : `<p class="meta">No upcoming events yet.</p>`}
+      </div>
+    </div>`;
+}
+function openEventDialog(key) {
+  const dlg = $("#eventDialog"); if (!dlg) return;
+  const list = state.events.filter(ev => ev.date <= key && key <= calEnd(ev));
+  $("#eventDialogTitle").textContent = calLongDate(key);
+  $("#eventDialogList").innerHTML = list.map(ev => calEventItem(ev, false)).join("");
+  if (!dlg.open) dlg.showModal();
+}
+function renderEventsAdmin() {
+  const box = $("#eventList"); if (!box) return;
+  const today = calYmd(new Date());
+  const list = [...state.events].sort((a, b) => (a.date + (a.time || "")).localeCompare(b.date + (b.time || "")));
+  box.innerHTML = list.length ? list.map(ev => `
+    <div class="row"><div style="display:flex;gap:12px;align-items:center;min-width:0">${typeof ev.image === "string" && ev.image.startsWith("data:image/") ? `<img class="thumb" src="${esc(ev.image)}" alt="">` : ""}<div style="min-width:0"><strong>${esc(ev.title || "")}</strong>
+      <div class="meta">${esc(calLongDate(ev.date))}${calEnd(ev) !== ev.date ? " to " + esc(calLongDate(calEnd(ev))) : ""}${ev.time ? " · " + esc(calTime(ev.time)) : ""}${calEnd(ev) < today ? " · past" : ""}</div>
+      ${ev.details ? `<div class="meta">${esc(ev.details)}</div>` : ""}</div></div>
+      <div class="actions"><button class="btn danger sm" data-act="delevent" data-id="${ev.id}">Delete</button></div></div>`).join("")
+    : `<div class="empty">No events yet. Add one with the form.</div>`;
+}
+
+/* ---------- NAV SWIPE HINT ---------- */
+function initNavSwipeHint() {
+  const nav = $(".site-nav"), strip = $(".site-nav .wrap"); if (!nav || !strip) return;
+  const update = () => {
+    const max = strip.scrollWidth - strip.clientWidth;
+    nav.classList.toggle("can-left", strip.scrollLeft > 4);
+    nav.classList.toggle("can-right", max > 4 && strip.scrollLeft < max - 4);
+  };
+  strip.addEventListener("scroll", update, { passive: true });
+  window.addEventListener("resize", update);
+  update();
+  // One small nudge per visit so people notice the row can be swiped.
+  try {
+    if (sessionStorage.getItem("cpic-nav-nudged") || strip.scrollWidth - strip.clientWidth < 8
+        || matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    sessionStorage.setItem("cpic-nav-nudged", "1");
+    setTimeout(() => { strip.scrollTo({ left: 70, behavior: "smooth" }); setTimeout(() => strip.scrollTo({ left: 0, behavior: "smooth" }), 700); }, 900);
+  } catch (e) {}
+}

@@ -57,12 +57,31 @@ service cloud.firestore {
       allow create, update, delete: if isAdmin();
     }
 
+    // School calendar events shown on the student page.
+    match /events/{id} {
+      allow read: if true;
+      allow create, update: if isAdmin()
+                    && request.resource.data.title is string
+                    && request.resource.data.title.size() <= 100
+                    && request.resource.data.date is string
+                    && request.resource.data.date.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}$')
+                    && (!('endDate' in request.resource.data)
+                        || (request.resource.data.endDate is string
+                            && request.resource.data.endDate.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}$')
+                            && request.resource.data.endDate >= request.resource.data.date))
+                    && (!('image' in request.resource.data)
+                        || (request.resource.data.image is string
+                            && request.resource.data.image.matches('^data:image/jpeg;base64,[A-Za-z0-9+/=]+$')
+                            && request.resource.data.image.size() <= 800000));
+      allow delete: if isAdmin();
+    }
+
     match /siteContent/contact {
       allow read: if true;
       allow create, update, delete: if isAdmin();
     }
 
-    // Which look the student page uses ('basic' or 'mario'). Admin only writes.
+    // Which look the student page uses ('basic', 'mario' or 'retro'). Admin only writes.
     match /siteContent/theme {
       allow read: if true;
       allow create, update, delete: if isAdmin();

@@ -25,6 +25,8 @@
   </form>
 </div>
 
+<script>setTimeout(function(){if(!window.__adminReady){var e=document.getElementById("loginErr");if(e&&!e.textContent)e.textContent="The page script did not start, so login cannot work. Open this page from your hosted site (not by double-clicking the file) and check the browser console (F12) for the red error.";}},2500)</script>
+
 <div id="dash" class="hidden">
   <header class="top"><div class="wrap">
     <span class="brand">CPIC Supreme Student Council · Admin</span>
@@ -40,6 +42,7 @@
       <button role="tab" aria-selected="false" data-tab="tHero">Hero photo</button>
       <button role="tab" aria-selected="false" data-tab="tTheme">Site theme</button>
       <button role="tab" aria-selected="false" data-tab="tOfficers">SSC Officers</button>
+      <button role="tab" aria-selected="false" data-tab="tCalendar">Calendar</button>
       <button role="tab" aria-selected="false" data-tab="tContact">Contact us</button>
     </div>
 
@@ -202,36 +205,6 @@
             <span class="d">Retro 8-bit look with pixel fonts, bricks and a sky.</span>
             <span class="tag">In use</span>
           </button>
-          <button type="button" class="skin-option" data-skin-choice="peach" aria-pressed="false">
-            <span class="skin-swatch peach" aria-hidden="true"></span>
-            <strong>Peach theme</strong>
-            <span class="d">Soft peach, coral and pink. Warm and friendly.</span>
-            <span class="tag">In use</span>
-          </button>
-          <button type="button" class="skin-option" data-skin-choice="coffee" aria-pressed="false">
-            <span class="skin-swatch coffee" aria-hidden="true"></span>
-            <strong>Coffee theme</strong>
-            <span class="d">Deep burgundy and cream. Classic and elegant.</span>
-            <span class="tag">In use</span>
-          </button>
-          <button type="button" class="skin-option" data-skin-choice="sage" aria-pressed="false">
-            <span class="skin-swatch sage" aria-hidden="true"></span>
-            <strong>Sage theme</strong>
-            <span class="d">Forest green, soft sage and pale green.</span>
-            <span class="tag">In use</span>
-          </button>
-          <button type="button" class="skin-option" data-skin-choice="sunset-riviera" aria-pressed="false">
-            <span class="skin-swatch sunset-riviera" aria-hidden="true"></span>
-            <strong>Sunset Riviera</strong>
-            <span class="d">Burnt terracotta, sunset orange and ocean blue.</span>
-            <span class="tag">In use</span>
-          </button>
-          <button type="button" class="skin-option" data-skin-choice="midnight-lavender" aria-pressed="false">
-            <span class="skin-swatch midnight-lavender" aria-hidden="true"></span>
-            <strong>Midnight Lavender</strong>
-            <span class="d">Midnight purple, dusty violet and pale lilac.</span>
-            <span class="tag">In use</span>
-          </button>
           <button type="button" class="skin-option" data-skin-choice="retro" aria-pressed="false">
             <span class="skin-swatch retro" aria-hidden="true"></span>
             <strong>Retro theme</strong>
@@ -307,6 +280,32 @@
           </div>
         </form>
         <div><h2>Current officers</h2><div id="officerList"></div></div>
+      </div>
+    </div>
+    <div class="tabpane hidden" id="tCalendar">
+      <div class="admin-grid two">
+        <form class="panel" id="eventForm">
+          <h2>Add a calendar event</h2>
+          <p class="meta">Events show on the student page calendar until you delete them.</p>
+          <label for="eventTitle">Event title</label>
+          <input type="text" id="eventTitle" maxlength="100" required>
+          <label for="eventDate">Date</label>
+          <input type="date" id="eventDate" min="2026-01-01" max="2027-12-31" required>
+          <label class="important-image-remove" for="eventMulti"><input type="checkbox" id="eventMulti"> This event lasts more than one day</label>
+          <div id="eventEndWrap" class="hidden">
+            <label for="eventEnd">Last day of the event</label>
+            <input type="date" id="eventEnd" min="2026-01-01" max="2027-12-31">
+          </div>
+          <label for="eventTime">Time (optional)</label>
+          <input type="time" id="eventTime">
+          <label for="eventDetails">Details (optional)</label>
+          <textarea id="eventDetails" maxlength="500"></textarea>
+          <label for="eventImage">Event image (optional)</label>
+          <input type="file" id="eventImage" accept="image/*">
+          <p class="meta">Shown with the event when students tap its day. It is resized automatically.</p>
+          <div class="important-admin-actions"><button class="btn" type="submit" id="saveEvent">Add event</button></div>
+        </form>
+        <div><h2>Calendar events</h2><div id="eventList"></div></div>
       </div>
     </div>
   </main>
