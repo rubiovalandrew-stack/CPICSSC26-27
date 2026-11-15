@@ -1024,13 +1024,11 @@ html[data-skin=retro] body[data-page=student] .site-nav :is(a,.nav-btn){padding:
 @media (prefers-reduced-motion:reduce){.site-nav.can-right::after{animation:none}
 }
 /* ---- Calendar (uses the active theme's variables) ---- */
-.cal-layout{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(0,1fr);gap:16px;align-items:start}
-.cal-side{display:grid;gap:16px}
+.cal-layout{display:grid;grid-template-columns:minmax(0,1fr);gap:16px;align-items:start}
 .cal-card{background:var(--card);color:var(--ink);border:1px solid var(--line);border-top:4px solid var(--gold);border-radius:var(--radius);padding:16px}
 .cal-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px}
-.cal-title,.cal-side-title{margin:0;color:var(--heading-ink,var(--ink))}
+.cal-title{margin:0;color:var(--heading-ink,var(--ink))}
 .cal-title{font-size:1.35rem;text-align:center;flex:1}
-.cal-side-title{font-size:1.1rem;margin-bottom:8px}
 .cal-btn{width:38px;height:38px;border-radius:50%;border:1.5px solid var(--line);background:var(--card);color:var(--ink);font:700 1.4rem/1 var(--font-body,system-ui),sans-serif;cursor:pointer;padding:0 0 3px}
 .cal-btn:hover{border-color:var(--gold);color:var(--gold-d)}
 .cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:4px}
@@ -1048,8 +1046,7 @@ button.cal-cell:hover{background:var(--line)}
 .cal-event{padding-left:12px;border-left:4px solid var(--gold)}
 .cal-event strong{display:block}
 .cal-event p{margin:.25em 0 0;color:var(--ink2);white-space:pre-wrap}
-@media (max-width:760px){.cal-layout{grid-template-columns:1fr}
-.cal-cell{min-height:36px}
+@media (max-width:760px){.cal-cell{min-height:36px}
 }
 /* ---- Calendar v2: round days, dimmed neighbours, animated event days ---- */
 .cal-head{display:grid;grid-template-columns:1fr auto auto;gap:6px}
@@ -1111,8 +1108,6 @@ html[data-skin=retro] body[data-page=student] .cal-foot{padding:6px 14px 14px;bo
 html[data-skin=retro] body[data-page=student] .cal-today{border:2.5px solid var(--r-ink);border-radius:99px;background:var(--r-teal);color:#fff;box-shadow:3px 3px 0 var(--r-ink);font-family:"Bungee","Poppins",sans-serif;font-weight:400;font-size:.8rem;padding:7px 14px}
 html[data-skin=retro] body[data-page=student] .cal-today:hover{background:var(--r-pink);border-color:var(--r-ink)}
 html[data-skin=retro] body[data-page=student] .cal-key{border-color:var(--r-pink)}
-html[data-skin=retro] body[data-page=student] .cal-side .cal-card{padding:16px}
-html[data-skin=retro] body[data-page=student] .cal-side-title{font-family:"Bungee","Poppins",sans-serif;font-weight:400;font-size:1rem;color:var(--r-navy)}
 html[data-skin=retro] body[data-page=student] .cal-event{border-left:6px solid var(--r-pink);padding-left:10px}
 html[data-skin=retro] body[data-page=student] .cal-event strong{font-family:var(--r-marker),cursive;font-weight:400;font-size:1.1rem}
 html[data-skin=retro] body[data-page=student] .cal-event-img{border:3px solid var(--r-ink);box-shadow:3px 3px 0 var(--r-ink);border-radius:10px}

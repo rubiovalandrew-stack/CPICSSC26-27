@@ -63,7 +63,7 @@ const fmtTime = t => new Date(t).toLocaleString("en-PH", { month: "short", day: 
 const shortDate = t => new Date(t).toLocaleDateString("en-PH", { month: "short", day: "numeric" });
 const ago = ms => { const m = Math.floor(ms / 60000); return m < 1 ? "Just now" : m < 60 ? m + "m" : Math.floor(m / 60) + "h"; };
 const tagClass = s => (s === "SSC" ? "tag ssc" : "tag");
-// Everything students see (news, photos, approved messages) lives for 24 hours from when it was posted.
+// Photos expire 24 hours after posting.
 const expiry = i => (i.expireAt && i.expireAt.toMillis ? i.expireAt.toMillis() : (i.postedAt || i.date) + DAY);
 const isLive = i => expiry(i) > Date.now();
 const liveImageCountForCourse = course => state.images.filter(image => image.course === course && isLive(image)).length;
@@ -184,7 +184,7 @@ function stamps() {
   return gone;
 }
 const purged = new Set();
-function purge() {   // admin browser deletes anything older than 24h (photos, news, posted messages + their comments)
+function purge() {   // admin browser deletes expired photos and comments for deleted messages
   if (!auth.currentUser) return;
   const n = Date.now();
   const drop = (col, id) => {
@@ -195,15 +195,6 @@ function purge() {   // admin browser deletes anything older than 24h (photos, n
     state.images.filter(i => expiry(i) <= n).forEach(dropImage);
     state.dailyBest.filter(d => (d.month || "") < monthKey(n)).forEach(d => drop("dailyBest", d.id));   // month already highlighted
   }
-  state.news.filter(i => expiry(i) <= n).forEach(i => drop("news", i.id));
-  state.messages.filter(m => m.status === "approved" && expiry(m) <= n).forEach(async m => {
-    const k = "messages:" + m.id; if (purged.has(k)) return; purged.add(k);
-    try {
-      const cs = await getDocs(query(collection(fs, "comments"), where("messageId", "==", m.id)));
-      await Promise.all(cs.docs.map(c => deleteDoc(c.ref)));
-      await deleteDoc(doc(fs, "messages", m.id));
-    } catch (err) { console.error("Could not delete expired message:", err); purged.delete(k); }
-  });
   if (loaded.has("messages") && loaded.has("comments")) {   // comments whose message is already gone
     const ids = new Set(state.messages.map(m => m.id));
     state.comments.filter(c => !ids.has(c.messageId)).forEach(c => drop("comments", c.id));
@@ -427,7 +418,7 @@ const newsPopupLockSeconds = () => {
 function checkGate() {
   if (!loaded.has("newsPopupSettings") || gateOpen || (state.importantAnnouncement && Number(state.importantAnnouncement.lockUntil) > Date.now())) return;
   const read = readSet(), cutoff = Date.now() - NEW_DAYS * DAY;
-  const unread = state.news.filter(n => !read.has(n.id) && n.date > cutoff && isLive(n));
+  const unread = state.news.filter(n => !read.has(n.id) && n.date > cutoff);
   if (unread.length) openGate(unread);
 }
 function openGate(announcements) {
@@ -659,11 +650,11 @@ function initStudent() {
   watchDocument("heroBackground", doc(fs, "siteContent", "heroBackground"), renderHeroBackground, null);
   updateOnScroll();
   let lastSig = "";
-  const liveSig = () => [...state.news, ...state.messages].filter(isLive).map(i => i.id).join();
+  const liveSig = () => [...state.news, ...state.messages.filter(m => m.status === "approved")].map(i => i.id).join();
   const renderNews = () => {
     const v = votes();
     lastSig = liveSig();
-    const live = state.news.filter(isLive);
+    const live = state.news;
     const announcements = bulletinView === "recent" ? live.slice(0, 3) : live;
     $("#news").innerHTML = announcements.length ? announcements.map(n => `
       <article class="news-item" data-id="${n.id}">
@@ -770,7 +761,7 @@ function initStudent() {
   const drawWall = () => {
     const v = votes();
     lastSig = liveSig();
-    let posted = state.messages.filter(isLive).sort(byDate);
+    let posted = state.messages.filter(m => m.status === "approved").sort(byDate);
     if (messageFilter === "liked") {
       posted = posted.filter(m => (m.likes || 0) > 0)
         .sort((a, b) => (b.likes || 0) - (a.likes || 0) || b.date - a.date);
@@ -1229,12 +1220,12 @@ function initAdmin() {
       if (files.length > 5) return toast("Choose no more than 5 images for one news post.");
       const images = await Promise.all(files.map(file => compress(file, 800, 70000)));
       const now = Date.now();
-      const news = { source: $("#source").value, title: $("#ntitle").value.trim(), body: $("#nbody").value.trim(), images, date: now, expireAt: Timestamp.fromMillis(now + DAY) };
+      const news = { source: $("#source").value, title: $("#ntitle").value.trim(), body: $("#nbody").value.trim(), images, date: now };
       if (new TextEncoder().encode(JSON.stringify(news)).length > 950000) {
         return toast("The news text or selected images are too large. Shorten the details or use smaller images.");
       }
       await addDoc(collection(fs, "news"), news);
-      e.target.reset(); toast("Posted. It will stay up for 24 hours.");
+      e.target.reset(); toast("Posted. It will stay until an admin deletes it.");
     } catch (err) {
       console.error(err);
       toast(err.message === "news-image-too-large"
@@ -1391,11 +1382,10 @@ function initAdmin() {
         const text = $("#rep-" + id).value.trim(); if (!text) return toast("Write a reply first.");
         const m = state.messages.find(x => x.id === id);
         const wasPosted = m && m.status === "approved";
-        if (!wasPosted && !confirm("Sending a reply also posts this message on the student page for 24 hours. Continue?")) return;
+        if (!wasPosted && !confirm("Sending a reply also posts this message on the student page. Continue?")) return;
         const patch = { reply: text, repliedAt: Date.now() };
         if (!wasPosted) Object.assign(patch, postFields());
         await updateDoc(doc(fs, "messages", id), patch);
-        if (!wasPosted) await syncCommentExpiry(id, patch.expireAt);
         openReply.delete(id); return toast("Reply posted.");
       }
       if (act === "delreply") { if (!confirm("Remove your reply?")) return; return await updateDoc(doc(fs, "messages", id), { reply: "" }); }
@@ -1444,19 +1434,16 @@ function initAdmin() {
         return await deleteDoc(doc(fs, col, id));
       }
       if (act === "approvecomment") {
-        // An approved comment disappears together with the message it belongs to.
-        const c = state.comments.find(x => x.id === id), msg = c && state.messages.find(m => m.id === c.messageId);
-        await updateDoc(doc(fs, "comments", id), { status: "approved", expireAt: Timestamp.fromMillis(msg ? expiry(msg) : Date.now() + DAY) });
+        await updateDoc(doc(fs, "comments", id), { status: "approved" });
         return;
       }
       if (act === "rejectcomment") { await updateDoc(doc(fs, "comments", id), { status: "rejected" }); return; }
       if (act === "approve") {
         const f = postFields();
         await updateDoc(doc(fs, "messages", id), f);
-        await syncCommentExpiry(id, f.expireAt);
-        return toast("Posted. It will stay up for 24 hours.");
+        return toast("Posted. It will stay until an admin takes it down.");
       }
-      // Reject / unpost: take it off the 24-hour clock until it is posted again.
+      // Reject / unpost: hide it from the student page until it is approved again.
       await updateDoc(doc(fs, "messages", id), { status: act === "reject" ? "rejected" : "pending", postedAt: deleteField(), expireAt: deleteField() });
     } catch (err) { console.error(err); toast("That action failed."); }
   });
@@ -1599,12 +1586,7 @@ function compress(file, max = 900, maxLength = 900000) {
   });
 }
 
-// Posting a message starts its 24-hour clock.
-const postFields = () => { const now = Date.now(); return { status: "approved", postedAt: now, expireAt: Timestamp.fromMillis(now + DAY) }; };
-async function syncCommentExpiry(messageId, expireAt) {
-  const cs = await getDocs(query(collection(fs, "comments"), where("messageId", "==", messageId)));
-  await Promise.all(cs.docs.filter(c => c.data().status === "approved").map(c => updateDoc(c.ref, { expireAt })));
-}
+const postFields = () => ({ status: "approved", postedAt: Date.now() });
 
 function adminNewsBody(n) {
   const p = preview(n.body), open = expandedAdminNews.has(n.id);
@@ -1618,7 +1600,7 @@ function renderAdmin() {
     if (filter === "disliked") return items.sort((a, b) => (b.dislikes || 0) - (a.dislikes || 0) || b.date - a.date);
     return items.sort(byDate);
   };
-  const sortedNews = sortByReactions(state.news.filter(isLive), adminNewsFilter);
+  const sortedNews = sortByReactions([...state.news], adminNewsFilter);
   const news = adminNewsFilter === "latest" ? sortedNews.slice(0, 3) : sortedNews;
   const now = Date.now();
   const imgs = state.images.filter(i => expiry(i) > now)
@@ -1657,7 +1639,7 @@ function renderAdmin() {
     <div class="actions"><button class="btn danger sm" data-act="delbest" data-id="${w.id}">Remove</button></div></div>`).join("") : `<div class="empty">No daily winners saved yet this month.</div>`;
   stamps();
 
-  const msgs = state.messages.filter(m => m.status !== "approved" || isLive(m));
+  const msgs = [...state.messages];
   if (adminMessageFilter === "liked") msgs.sort((a, b) => (b.likes || 0) - (a.likes || 0) || b.date - a.date);
   else if (adminMessageFilter === "disliked") msgs.sort((a, b) => (b.dislikes || 0) - (a.dislikes || 0) || b.date - a.date);
   else if (adminMessageFilter === "recent") {
@@ -1849,9 +1831,9 @@ function calTime(t) {
   return `${h % 12 || 12}:${String(m).padStart(2, "0")} ${h < 12 ? "AM" : "PM"}`;
 }
 function calEnd(ev) { return ev.endDate && ev.endDate > ev.date ? ev.endDate : ev.date; }
-function calEventItem(ev, showDate) {
+function calEventItem(ev) {
   const multi = calEnd(ev) !== ev.date;
-  const range = multi ? `${calShortDate(ev.date)} – ${calShortDate(calEnd(ev))}` : (showDate ? calShortDate(ev.date) : "");
+  const range = multi ? `${calShortDate(ev.date)} – ${calShortDate(calEnd(ev))}` : "";
   const meta = [range, calTime(ev.time)].filter(Boolean).join(" · ");
   const img = typeof ev.image === "string" && ev.image.startsWith("data:image/") ? `<img class="cal-event-img" src="${esc(ev.image)}" alt="">` : "";
   return `<li class="cal-event"><strong>${esc(ev.title || "")}</strong>
@@ -1874,8 +1856,6 @@ function renderCalendar() {
     const out = dt.getMonth() !== cal.m;
     cells += `<button type="button" class="cal-cell${out ? " out" : ""}${key === today ? " today" : ""}${key === sel ? " selected" : ""}${n ? " has-event" : ""}" data-cal-day="${key}" aria-pressed="${key === sel}" aria-label="${esc(calLongDate(key))}${n ? `, ${n} event${n > 1 ? "s" : ""}` : ""}"><span>${dt.getDate()}</span>${n ? `<i class="cal-dot" aria-hidden="true"></i>` : ""}</button>`;
   }
-  const chosen = byDate[sel] || [];
-  const upcoming = state.events.filter(ev => calEnd(ev) >= today).slice(0, 5);
   const title = new Date(cal.y, cal.m, 1).toLocaleDateString(undefined, { month: "long", year: "numeric" });
   box.innerHTML = `
     <div class="cal-card">
@@ -1887,23 +1867,13 @@ function renderCalendar() {
       <div class="cal-grid">${cells}</div>
       <div class="cal-foot"><button type="button" class="cal-today" data-cal-nav="today">Jump to today</button>
         <span class="meta"><i class="cal-key" aria-hidden="true"></i> Pulsing days have events. Tap one for details.</span></div>
-    </div>
-    <div class="cal-side">
-      <div class="cal-card">
-        <h3 class="cal-side-title">${esc(calLongDate(sel))}</h3>
-        ${chosen.length ? `<ul class="cal-events">${chosen.map(ev => calEventItem(ev, false)).join("")}</ul>` : `<p class="meta">No events on this day.</p>`}
-      </div>
-      <div class="cal-card">
-        <h3 class="cal-side-title">Coming up</h3>
-        ${upcoming.length ? `<ul class="cal-events">${upcoming.map(ev => calEventItem(ev, true)).join("")}</ul>` : `<p class="meta">No upcoming events yet.</p>`}
-      </div>
     </div>`;
 }
 function openEventDialog(key) {
   const dlg = $("#eventDialog"); if (!dlg) return;
   const list = state.events.filter(ev => ev.date <= key && key <= calEnd(ev));
   $("#eventDialogTitle").textContent = calLongDate(key);
-  $("#eventDialogList").innerHTML = list.map(ev => calEventItem(ev, false)).join("");
+  $("#eventDialogList").innerHTML = list.map(calEventItem).join("");
   if (!dlg.open) dlg.showModal();
 }
 function renderEventsAdmin() {
